@@ -68,7 +68,7 @@ void *handle_client(void *socketFD){
      int *id_ptr, socketfd;
      id_ptr = (int *) socketFD;
      socketfd = *id_ptr;
-
+     cout<<"Socket FD: "<<socketFD<<endl;
      char buffer[BUFFER_SIZE];
      if (socketfd < 0) diewithError("ERROR on accept");
      bzero(buffer,BUFFER_SIZE);
@@ -76,7 +76,7 @@ void *handle_client(void *socketFD){
      if (n < 0) diewithError("ERROR reading from socket");
 
      //LOOK AT MESSAGE
-     printf(buffer);
+     cout<<"Message: "<<buffer<<endl;
      n = write(socketfd,buffer,strlen(buffer));//Send echoed message back
      if (n < 0) diewithError("ERROR writing to socket");
      close(socketfd);	
