@@ -8,13 +8,14 @@
 using namespace std;
 
 //Function Prototypes
-int handle_client(void *ptr);
+void *handle_client(void *socketFD);
 
 int main(int argc, char *argv[])
 {
      //Setup Main Socket
-     int sockfd, newsockfd, portno;
+     int sockfd, portno;
      socklen_t clilen;
+     void *newsockfd;
      struct sockaddr_in serv_addr, cli_addr;
      if (argc < 2) {
          fprintf(stderr,"ERROR, no port provided\n");
@@ -38,15 +39,19 @@ int main(int argc, char *argv[])
      //Wait for messages
      int processed=0;
      int thread_ID=0;
-     int thread_status[10];
+     int rc;
+     int *socketID[10];
      pthread_t threads[10];
+
      while(1){
-	     //Create new thread
-     	     //pthread_t threads[thread_ID];
+	     cout<<"Sockets Created "<<thread_ID<<endl;
 	     //Block until message received
-	     newsockfd = accept(sockfd,(struct sockaddr *) &cli_addr,&clilen);
+     	     socketID[thread_ID]= (int *) malloc(sizeof(int));
+	     *socketID[thread_ID] = accept(sockfd,(struct sockaddr *) &cli_addr,&clilen);
 	     //Spawn Thread
-	     thread_status[thread_ID] = pthread_create( &threads[thread_ID], NULL, handle_client, (void*) newsockfd);
+	     rc = pthread_create( &threads[thread_ID], NULL, handle_client, (void *) socketID[thread_ID]);
+	     
+	     if(rc) diewithError("ERROR; return code from pthread_create()");
      	     thread_ID++;
      }
 
@@ -57,10 +62,13 @@ int main(int argc, char *argv[])
 
 
 
-int handle_client(void *ptr){
+void *handle_client(void *socketFD){
 
-     int n,socketfd;
-     socketfd=(int) ptr;
+     int n;
+     int *id_ptr, socketfd;
+     id_ptr = (int *) socketFD;
+     socketfd = *id_ptr;
+
      char buffer[BUFFER_SIZE];
      if (socketfd < 0) diewithError("ERROR on accept");
      bzero(buffer,BUFFER_SIZE);
