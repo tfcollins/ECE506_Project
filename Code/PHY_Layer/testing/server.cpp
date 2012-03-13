@@ -85,12 +85,15 @@ void *handle_client(void *socketFD){
 	     cout<<"Comparing strings"<<endl;
 	     cout<<strcmp(buffer,"done")<<endl;
 	     if (strcmp(buffer,"done")==0){
-		     cout<<"Sending response"<<endl;
+		     cout<<"Sending response: "<<buffer<<endl;
 		     n = write(socketfd,buffer,strlen(buffer));//Send echoed message back
 		     if (n < 0) diewithError("ERROR writing to socket");
                      cout<<"Quitting"<<endl;
 		     break;
 		     }
+	     else
+	     	     n = write(socketfd,buffer,strlen(buffer));//Send echoed message back
+		
 	     }
 
      //LOOK AT MESSAGE

@@ -82,8 +82,10 @@ int main(int argc, char *argv[])
 	break;
     }
     //Get echo back
-    bzero(buffer,256);
     cout<<"Waiting for response"<<endl;
+    //Get whatever is in the queue and then a message sent from server
+    for(int j=0;j<2;j++){
+    bzero(buffer,256); 
     n = read(sockfd,buffer,255);
     if (n < 0){ 
 	printf("ERROR reading from socket");
@@ -91,6 +93,7 @@ int main(int argc, char *argv[])
         }
     //Print received message
     printf("Response: %s\n",buffer);
+    }
     close(sockfd);
 
     return 0;
