@@ -9,6 +9,8 @@ using namespace std;
 
 //Function Prototypes
 void *handle_client(void *socketFD);
+int char_in_string(string word);
+
 
 int main(int argc, char *argv[])
 {
@@ -61,7 +63,7 @@ int main(int argc, char *argv[])
 
 
 
-
+//Accepts socket descriptor of new client
 void *handle_client(void *socketFD){
 
      int n;
@@ -71,14 +73,42 @@ void *handle_client(void *socketFD){
      cout<<"Socket FD: "<<socketFD<<endl;
      char buffer[BUFFER_SIZE];
      if (socketfd < 0) diewithError("ERROR on accept");
-     bzero(buffer,BUFFER_SIZE);
-     n = read(socketfd,buffer,BUFFER_SIZE-1);
-     if (n < 0) diewithError("ERROR reading from socket");
+     //Overall receive loop
+     while(1){ 
+	     bzero(buffer,BUFFER_SIZE);
+	     //Wait for message, will run infinitely if socket closed on client
+	     n = read(socketfd,buffer,BUFFER_SIZE-1);
+	     if (n < 0) diewithError("ERROR reading from socket");
+	     cout<<"Buffer: "<<buffer<<endl;
+           
+	     //Send Message Back
+	     cout<<"Comparing strings"<<endl;
+	     cout<<strcmp(buffer,"done")<<endl;
+	     if (strcmp(buffer,"done")==0){
+		     cout<<"Sending response"<<endl;
+		     n = write(socketfd,buffer,strlen(buffer));//Send echoed message back
+		     if (n < 0) diewithError("ERROR writing to socket");
+                     cout<<"Quitting"<<endl;
+		     break;
+		     }
+	     }
 
      //LOOK AT MESSAGE
-     cout<<"Message: "<<buffer<<endl;
-     n = write(socketfd,buffer,strlen(buffer));//Send echoed message back
-     if (n < 0) diewithError("ERROR writing to socket");
+     //cout<<"Message: "<<buffer<<endl;
+     //if (strcmp(buffer,"quit")==0)
+	//break;
      close(socketfd);	
      return 0;
 }
+
+int char_in_string(string word){
+	for (int i=0;i<word.length();i++)
+		if (word[i]=='q')
+			return 1;
+
+	return 0;
+
+}
+
+
+
