@@ -2,20 +2,17 @@
 #include "all.h"
 using namespace std;
 
-void physical_initial()
-{
-	
+void physical_initial() {
+
 	cout << "In physical initial\n";
 	//send frome 128 bytes server
-	
-	//wait for response
 
+	//wait for response
 
 	//	return 0;
 }
 
-int PHY_send()
-{
+int PHY_send() {
 
-return 0;
+	return 0;
 }

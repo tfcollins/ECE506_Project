@@ -15,11 +15,9 @@
 #include <netdb.h>
 #include <sys/types.h>
 
-
-void diewithError(char *message)
-{
-        perror(message);
-        exit(1);
+void diewithError(char *message) {
+	perror(message);
+	exit(1);
 }
 
 #endif
