@@ -2,10 +2,11 @@
 //JES
 
 #include "all.h"
-using namespace std;
 
-//Function Prototypes
-int phy_setup(int port, struct hostent *server);
+void diewithError(string message) {
+        cout << message << endl;
+        exit(1);
+}
 
 //Known port number to connect
 #define PORTNO 8787
@@ -38,7 +39,7 @@ int main(int argc, char *argv[]) {
 	server = gethostbyname(argv[1]);
 	if (server == NULL) diewithError("Error, no such host!");
 
-	sockfd = phy_setup(PORTNO, server);
+	sockfd = 100;//phy_setup(PORTNO, server);
 
 	//End of transmissions    
 	strcpy(buffer, argv[3]);

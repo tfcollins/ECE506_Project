@@ -10,7 +10,6 @@
  */
 
 #include "all.h"
-using namespace std;
 
 int phy_setup(int port, struct hostent *serv){
 

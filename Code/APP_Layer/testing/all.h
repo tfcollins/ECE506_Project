@@ -18,9 +18,11 @@
 
 using namespace std;
 
-void diewithError(string message) {
-	cout << message << endl;
-	exit(1);
-}
+
+//Function prototype
+void diewithError(string message);
+int phy_setup(int port, struct hostent *server);
+
+
 
 #endif
