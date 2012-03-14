@@ -16,8 +16,10 @@
 #include <sys/types.h>
 #include <pthread.h>          //For POSIX threads 
 
-void diewithError(char *message) {
-	perror(message);
+using namespace std;
+
+void diewithError(string message) {
+	cout << message << endl;
 	exit(1);
 }
 
