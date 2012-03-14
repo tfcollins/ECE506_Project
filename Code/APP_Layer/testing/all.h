@@ -9,12 +9,13 @@
 #include <arpa/inet.h>         
 #include <stdlib.h>            
 #include <string.h>
-//#include <string>
+#include <string>
 #include <unistd.h>   
 #include <netinet/in.h>
 #include <netdb.h>
 #include <sys/types.h>
 #include <pthread.h>          //For POSIX threads 
+
 void diewithError(char *message) {
 	perror(message);
 	exit(1);

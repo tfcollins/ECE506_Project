@@ -1,69 +1,44 @@
-//Travis Collins
-//ECE 506
-//Homework0
-//EchoClient
-//Based on examples from class textbook, "Computer Networks"
+//Generic APP_Layer testing
+//JES
 
 #include "all.h"
-/*#include <stdio.h>
- #include <stdlib.h>
- #include <unistd.h>
- #include <string.h>
- #include <sys/types.h>
- #include <sys/socket.h>
- #include <netinet/in.h>
- #include <netdb.h> 
- */
-
 using namespace std;
 
+//Function Prototypes
+int phy_setup(int port, struct hostent *server);
+
+//Known port number to connect
+#define PORTNO 8787
+
 int main(int argc, char *argv[]) {
-	int sockfd, portno, n;
+	int sockfd, n;
 	struct sockaddr_in serv_addr;
 	struct hostent *server;
 
-	cout << "Type done to quit" << endl;
-	char buffer[256];
-	if (argc < 4) {
-		fprintf(stderr, "usage %s hostname port string\n", argv[0]);
+	if (argc < 3) {
+		fprintf(stderr, "usage: %s hostname command data\n", argv[0]);
 		exit(0);
 	}
-	if (argc > 4) {
+	if (argc > 10) {
 		printf("Error: Too many inputs\n");
-		fprintf(stderr, "usage %s hostname port string\n", argv[0]);
+		fprintf(stderr, "usage %s hostname command data\n", argv[0]);
 		exit(0);
 	}
 
-	portno = atoi(argv[2]);
+	char buffer[256];
+
 	//Check if input too long
 	bzero(buffer, 256);
 	strcpy(buffer, argv[3]);
-	if (strlen(buffer) > 32) {
-		printf("Error: Input larger than 32 bytes\n");
+	if (strlen(buffer) > 255) {
+		printf("Error: Greater than one buffer!\n");
 		exit(0);
 	}
 
-	//Create socket
-	sockfd = socket(AF_INET, SOCK_STREAM, 0);
-	if (sockfd < 0) {
-		printf("ERROR opening socket\n");
-		exit(0);
-	}
 	server = gethostbyname(argv[1]);
-	if (server == NULL) {
-		fprintf(stderr, "ERROR, no such host\n");
-		exit(0);
-	}
-	bzero((char *) &serv_addr, sizeof(serv_addr));
-	serv_addr.sin_family = AF_INET;
-	bcopy((char *) server->h_addr, (char *) &serv_addr.sin_addr.s_addr,
-			server->h_length);
-	serv_addr.sin_port = htons(portno);
-	if (connect(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr))
-			< 0) {
-		printf("ERROR connecting\n");
-		exit(0);
-	}
+	if (server == NULL) diewithError("Error, no such host!");
+
+	sockfd = phy_setup(PORTNO, server);
 
 	//End of transmissions    
 	strcpy(buffer, argv[3]);
