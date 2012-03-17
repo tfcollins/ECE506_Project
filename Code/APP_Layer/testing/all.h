@@ -18,9 +18,9 @@
 
 using namespace std;
 
-
-//Function prototype
+//Function prototypes
 void diewithError(string message);
+void printhelp(void);
 int phy_setup(int port, struct hostent *server);
 
 
