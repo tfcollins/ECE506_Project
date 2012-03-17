@@ -9,15 +9,20 @@
 #include <arpa/inet.h>         
 #include <stdlib.h>            
 #include <string.h>
-//#include <string>
+#include <string>
 #include <unistd.h>   
 #include <netinet/in.h>
 #include <netdb.h>
 #include <sys/types.h>
 #include <pthread.h>          //For POSIX threads 
-void diewithError(char *message) {
-	perror(message);
-	exit(1);
-}
+#include <list>
+#include <queue>
+#include <deque>
+#include <time.h>
+
+using namespace std;
+
+void diewithError(string message);
+int phy_setup(int port, struct hostent *serv);
 
 #endif

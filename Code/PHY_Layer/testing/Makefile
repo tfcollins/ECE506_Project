@@ -1,7 +1,10 @@
 all:
 	g++ -lpthread server.cpp all.h -o server
 	g++ client.cpp all.h -o client
+phy_q:
+	g++ phy_q.cpp phy_setup.cpp all.h -lpthread -o phy_q
+
 threads:
 	g++ -lpthread threads_example.cpp -o threads
 clean:
-	rm client server
+	rm client server phy_q threads
