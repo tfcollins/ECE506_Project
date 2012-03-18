@@ -24,5 +24,6 @@ using namespace std;
 
 void diewithError(string message);
 int phy_setup(int port, struct hostent *serv);
+int phy_setup_server(int port);
 
 #endif

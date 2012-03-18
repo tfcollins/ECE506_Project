@@ -5,8 +5,10 @@
 
 #define BUFFER_SIZE 128
 
-using namespace std;
-
+void diewithError(string message) {
+        cout<<message<<endl;
+        exit(1);
+}
 //Function Prototypes
 void *handle_client(void *socketFD);
 int char_in_string(string word);
@@ -49,8 +51,7 @@ int main(int argc, char *argv[]) {
 		*socketID[thread_ID] = accept(sockfd, (struct sockaddr *) &cli_addr,
 				&clilen);
 		//Spawn Thread
-		rc = pthread_create(&threads[thread_ID], NULL, handle_client,
-				(void *) socketID[thread_ID]);
+		rc = pthread_create(&threads[thread_ID], NULL, handle_client, (void *) socketID[thread_ID]);
 
 		if (rc)
 			diewithError("ERROR; return code from pthread_create()");

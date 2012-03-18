@@ -14,9 +14,9 @@
 */
 //using namespace std;
 
-#define BUFFER_SIZE 128
-#define PORT 5000
-#define HOSTNAME "CCCWORK1"
+#define BUFFER_SIZE 256
+#define PORT 5005
+#define HOSTNAME "CCCWORK2"
 
 void diewithError(string message) {
         cout<<message<<endl;
@@ -31,11 +31,13 @@ void *phy_receive_t(void* num);
 queue<string> phy_send_q;
 queue<string> phy_receive_q;
 
+int alive=1;
 int connected=0;//Socket connected=1
 int socketfd;//Socket descriptor
 
 pthread_mutex_t mutex_phy_send = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutex_phy_receive = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutex_socket = PTHREAD_MUTEX_INITIALIZER;
 
 int main(){
 
@@ -49,7 +51,20 @@ int main(){
 		sleep(1);
 		cout<<"Phy Send Thread Size:"<<phy_send_q.size()<<endl;
 		cout<<"Phy Receive Thread Size:"<<phy_receive_q.size()<<endl;
+
+		if (i==5){
+			pthread_mutex_lock( &mutex_phy_send );
+			phy_send_q.push("Travis");
+			pthread_mutex_unlock( &mutex_phy_send );
+	
 		}
+	}
+
+	//Stop threads
+	alive=0;
+	pthread_cancel(phy_send_thread);
+	pthread_cancel(phy_receive_thread);
+
 	return 0;
 
 }
@@ -64,16 +79,20 @@ void *phy_send_t(void* num){
 	bzero(buffer, BUFFER_SIZE);//Clear buffer
 
 	//Setup Connection
-	if (!connected){
-		socketfd=phy_setup(PORT, gethostbyname(HOSTNAME));
-		connected=1;
-	}
+	socketfd=phy_setup(PORT, gethostbyname(HOSTNAME));
+	connected=1;
+
 	//Wait for messages to be sent
-	while(1){
+	while(alive){
 		if (!phy_send_q.empty()){
 			//Send first item in queue
-			n = write(socketfd, buffer, strlen(buffer)); //Send
+			//buffer=phy_send_q.front();
+			//n = write(socketfd, buffer, strlen(buffer)); //Send
+			pthread_mutex_lock( &mutex_socket );
+			n = write(socketfd, &phy_send_q.front(), BUFFER_SIZE); //Send
+			pthread_mutex_unlock( &mutex_socket );
                         if (n < 0) diewithError("ERROR writing to socket");
+			cout<<"Message Sent:"<<phy_send_q.front()<<endl;
 			//Remove sent item from queue
 			pthread_mutex_lock( &mutex_phy_send );
 			phy_send_q.pop();
@@ -88,22 +107,26 @@ void *phy_send_t(void* num){
 void *phy_receive_t(void* num){
 
 	int n;
+	sleep(1);
 
 	//setup connection
-	if (!connected){
-		socketfd=phy_setup(PORT,gethostbyname(HOSTNAME));
-		connected=1;
-	}
+	socketfd=phy_setup(PORT+1,gethostbyname(HOSTNAME));
+	connected=1;
+
 	char buffer[BUFFER_SIZE];
 	bzero(buffer, BUFFER_SIZE);//Clear buffer
-	while(1){
+	while(alive){
 		//Wait for packet to be received
 		n = read(socketfd, buffer, BUFFER_SIZE - 1);
+		cout << n <<endl;
                 if (n < 0) diewithError("ERROR reading from socket");
+		cout<<"Message Received"<<endl;
 		//Add frame to queue
 		pthread_mutex_lock( &mutex_phy_receive );
 		phy_receive_q.push(buffer);
 		pthread_mutex_unlock( &mutex_phy_receive );
+
+		cout<<phy_receive_q.front()<<endl;
 	}
 	cout<<"phy_receive_t (THREAD) Died"<<endl;
 }
