@@ -9,4 +9,4 @@ phy_q_server:
 threads:
 	g++ -lpthread threads_example.cpp -o threads
 clean:
-	rm client server phy_q threads
+	rm client server phy_q threads phy_q_server

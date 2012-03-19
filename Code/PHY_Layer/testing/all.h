@@ -26,4 +26,7 @@ void diewithError(string message);
 int phy_setup(int port, struct hostent *serv);
 int phy_setup_server(int port);
 
+extern int PORT;
+extern char* HOSTNAME;
+
 #endif

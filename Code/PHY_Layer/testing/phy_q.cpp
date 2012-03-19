@@ -15,8 +15,8 @@
 //using namespace std;
 
 #define BUFFER_SIZE 256
-#define PORT 5005
-#define HOSTNAME "CCCWORK2"
+//#define PORT 5005
+//#define HOSTNAME "CCCWORK2"
 
 void diewithError(string message) {
         cout<<message<<endl;
@@ -34,12 +34,20 @@ queue<string> phy_receive_q;
 int alive=1;
 int connected=0;//Socket connected=1
 int socketfd;//Socket descriptor
+int PORT;
+char* HOSTNAME;
 
 pthread_mutex_t mutex_phy_send = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutex_phy_receive = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutex_socket = PTHREAD_MUTEX_INITIALIZER;
 
-int main(){
+int main(int argc, char *argv[]){
+
+	//Args
+        if (argc<2 )
+                diewithError("Incorrect number of arguments");
+        PORT=atoi(argv[1]);
+        HOSTNAME=argv[2];
 
 	pthread_t phy_send_thread, phy_receive_thread;
 	int iret1, iret2;
@@ -49,8 +57,8 @@ int main(){
 	//Thread status info, consider moving to own thread
 	for(int i=0;i<12;i++){
 		sleep(1);
-		cout<<"Phy Send Thread Size:"<<phy_send_q.size()<<endl;
-		cout<<"Phy Receive Thread Size:"<<phy_receive_q.size()<<endl;
+		cout<<"PhyS Size:"<<phy_send_q.size()<<endl;
+		cout<<"PhyR Size:"<<phy_receive_q.size()<<endl;
 
 		if (i==5){
 			pthread_mutex_lock( &mutex_phy_send );
@@ -58,9 +66,16 @@ int main(){
 			pthread_mutex_unlock( &mutex_phy_send );
 	
 		}
+		if (i==10){
+			pthread_mutex_lock( &mutex_phy_send );
+			phy_send_q.push("DONE");
+			pthread_mutex_unlock( &mutex_phy_send );
+			alive=0;	
+		}
 	}
 
 	//Stop threads
+	//phy_send_q.push("DONE");
 	alive=0;
 	pthread_cancel(phy_send_thread);
 	pthread_cancel(phy_receive_thread);
@@ -74,25 +89,33 @@ int main(){
 //Sends data from phy_send_q out through TCP
 void *phy_send_t(void* num){
 
-	int n;
-	char buffer[BUFFER_SIZE];
-	bzero(buffer, BUFFER_SIZE);//Clear buffer
+	int n, done;
+	string buffer;
+	//bzero(buffer, BUFFER_SIZE);//Clear buffer
 
 	//Setup Connection
 	socketfd=phy_setup(PORT, gethostbyname(HOSTNAME));
 	connected=1;
+	cout<<"Sender Connection Setup"<<endl;
 
 	//Wait for messages to be sent
 	while(alive){
 		if (!phy_send_q.empty()){
 			//Send first item in queue
-			//buffer=phy_send_q.front();
-			//n = write(socketfd, buffer, strlen(buffer)); //Send
-			pthread_mutex_lock( &mutex_socket );
-			n = write(socketfd, &phy_send_q.front(), BUFFER_SIZE); //Send
-			pthread_mutex_unlock( &mutex_socket );
+			buffer=phy_send_q.front();
+                        //Change from string to char*
+                        char *a=new char[buffer.size()+1];
+                        a[buffer.size()]=0;
+                        memcpy(a,buffer.c_str(),buffer.size());
+			
+			//Send
+			n = write(socketfd, a, strlen(a)); //Send
                         if (n < 0) diewithError("ERROR writing to socket");
 			cout<<"Message Sent:"<<phy_send_q.front()<<endl;
+
+			if (strcmp(a,"DONE")==0){
+				break;
+			}
 			//Remove sent item from queue
 			pthread_mutex_lock( &mutex_phy_send );
 			phy_send_q.pop();
@@ -111,22 +134,22 @@ void *phy_receive_t(void* num){
 
 	//setup connection
 	socketfd=phy_setup(PORT+1,gethostbyname(HOSTNAME));
+	cout<<"Receiver Connection Setup"<<endl;
 	connected=1;
 
 	char buffer[BUFFER_SIZE];
-	bzero(buffer, BUFFER_SIZE);//Clear buffer
 	while(alive){
 		//Wait for packet to be received
+		bzero(buffer, BUFFER_SIZE);//Clear buffer
 		n = read(socketfd, buffer, BUFFER_SIZE - 1);
-		cout << n <<endl;
                 if (n < 0) diewithError("ERROR reading from socket");
-		cout<<"Message Received"<<endl;
+		cout<<"Message Received: "<<buffer<<endl;
 		//Add frame to queue
 		pthread_mutex_lock( &mutex_phy_receive );
 		phy_receive_q.push(buffer);
 		pthread_mutex_unlock( &mutex_phy_receive );
 
-		cout<<phy_receive_q.front()<<endl;
+		//cout<<phy_receive_q.front()<<endl;
 	}
 	cout<<"phy_receive_t (THREAD) Died"<<endl;
 }
