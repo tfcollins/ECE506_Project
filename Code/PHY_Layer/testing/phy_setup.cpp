@@ -11,6 +11,8 @@
 
 #include "all.h"
 
+
+//CLIENT
 int phy_setup(int port, struct hostent *serv){
 
 	int sock;
@@ -31,8 +33,8 @@ int phy_setup(int port, struct hostent *serv){
 	return sock;
 }
 
-
-int phy_setup_server(int port){
+//SERVER1
+int phy_setup_server1(int port){
 
 	 //Setup Socket
         int sockfd, portno;
@@ -60,3 +62,4 @@ int phy_setup_server(int port){
 	return sock;
 
 }
+

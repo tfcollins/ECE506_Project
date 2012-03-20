@@ -1,18 +1,6 @@
 #include "all.h"
 
-/*
-#include <stdio.h>
-#include <stdlib.h>
-#include <iostream>
-#include <list>
-#include <cstdlib>
-#include <queue>
-#include <deque>
-#include <pthread.h>
-#include <time.h>
-#include <unistd.h>
-*/
-//using namespace std;
+
 
 #define BUFFER_SIZE 256
 int PORT;
@@ -25,6 +13,7 @@ void diewithError(string message) {
 
 void *phy_send_t(void* num);
 void *phy_receive_t(void* num);
+void *phy_layer_t(void* num);
 
 
 //queues
@@ -46,14 +35,18 @@ int main(int argc, char *argv[]){
 	PORT=atoi(argv[1]);
 	//HOSTNAME=argv[2];	
 
-	pthread_t phy_send_thread, phy_receive_thread;
+	pthread_t phy_send_thread, phy_receive_thread, phy_layer_thread;
 	int iret1, iret2;
-	iret1 = pthread_create( &phy_send_thread, NULL, phy_send_t, (void*) 1);
-	iret2 = pthread_create( &phy_receive_thread, NULL, phy_receive_t, (void*) 1);
+	//iret1 = pthread_create( &phy_send_thread, NULL, phy_send_t, (void*) 1);
+	//iret2 = pthread_create( &phy_receive_thread, NULL, phy_receive_t, (void*) 1);
+    iret2 = pthread_create( &phy_layer_thread, NULL, phy_layer_t, (void*) 1);
 
+    
 	//Thread status info, consider moving to own thread
+    int count=0;
 	while(alive){
 		sleep(1);
+        count++;
 		cout<<"Phy Send Thread Size:"<<phy_send_q.size()<<endl;
 		cout<<"Phy Receive Thread Size:"<<phy_receive_q.size()<<endl;
 
@@ -62,96 +55,108 @@ int main(int argc, char *argv[]){
 			pthread_mutex_lock( &mutex_phy_send );
 			phy_send_q.push(phy_receive_q.front());
 			pthread_mutex_unlock( &mutex_phy_send );
-			
+			cout<<"Echo Message Back"<<endl;			
 			pthread_mutex_lock( &mutex_phy_receive );
 			phy_receive_q.pop();	
 			pthread_mutex_unlock( &mutex_phy_receive );
 	
 		}
-	}
+        if (count==5){
+            pthread_mutex_lock( &mutex_phy_send );
+			phy_send_q.push("TeST2");
+			pthread_mutex_unlock( &mutex_phy_send );
+            
+        }
+            
+    }
 
 	//Stop threads
 	alive=0;
-	pthread_cancel(phy_send_thread);
-	pthread_cancel(phy_receive_thread);
+	//pthread_cancel(phy_send_thread);
+	//pthread_cancel(phy_receive_thread);
+    pthread_cancel(phy_layer_thread);
 
+    
 	return 0;
 
 }
 
 
-//Physical Layer Send thread
-//Sends data from phy_send_q out through TCP
-void *phy_send_t(void* num){
 
-	int n;
-	//char* buffer;
-	//bzero(buffer, BUFFER_SIZE);//Clear buffer
-	string buffer;
 
-	//Setup Connection
-	int socketfd=phy_setup_server(PORT);
 
-	//Wait for messages to be sent
-	while(alive){
-		if (!phy_send_q.empty()){
-			cout<<"Entering  Sending Function"<<endl;
-			//Send first item in queue
-			buffer=phy_send_q.front();
-			//Change from string to char*
-			char *a=new char[buffer.size()+1];
-			a[buffer.size()]=0;
-			memcpy(a,buffer.c_str(),buffer.size());
-			cout<<a<<endl;
+void *phy_layer_t(void* num){
 
-			//Send message across TCP
-			n = write(socketfd, a, strlen(a)); //Send
-                        if (n < 0) diewithError("ERROR writing to socket");
-			cout<<"Message Sent: "<<a<<endl;
+    fd_set read_flags,write_flags; // you know what these are
+    struct timeval waitd;          
+    int thefd;             // The socket
+    char outbuff[256];     // Buffer to hold outgoing data
+    char inbuff[256];      // Buffer to read incoming data into
+    int err;	       // holds return values
+    
+    memset(&outbuff,0,sizeof(outbuff)); // memset used for portability
+    thefd=phy_setup_server1(PORT); // Connect to the finger port
+    
+    // Mark the socket as non-blocking, for safety.
+    int x;
+    x=fcntl(thefd,F_GETFL,0);
+    fcntl(thefd,F_SETFL,x | O_NONBLOCK);
+    
+    if(thefd==-1) {
+        printf("Could not connect to finger server\n");
+        exit(0);
+    }
+    cout<<"SOCKET SETUP WOOTZ"<<endl;
+    
+    while(1) {
+        FD_ZERO(&read_flags); // Zero the flags ready for using
+        FD_ZERO(&write_flags);
+        FD_SET(thefd, &read_flags);
+        if(!phy_send_q.empty()) FD_SET(thefd, &write_flags);
+        err=select(thefd+1, &read_flags,&write_flags,
+                   (fd_set*)0,&waitd);
+        if(err < 0) continue;
+        
+        //READ SOMETHING
+        if(FD_ISSET(thefd, &read_flags)) { //Socket ready for reading
+            FD_CLR(thefd, &read_flags);
+            memset(&inbuff,0,sizeof(inbuff));
+            cout<<"trying to read"<<endl;
+            if (read(thefd, inbuff, sizeof(inbuff)-1) <= 0) {
+                close(thefd);
+                diewithError("Socket Bug socket closed");
+                break;
+            }
+            else{
+                printf("%s\n",inbuff);
+                pthread_mutex_lock( &mutex_phy_receive );
+                phy_receive_q.push(inbuff);
+                pthread_mutex_unlock( &mutex_phy_receive );
+            }
+        }
+        
+        //WRITE SOMETHING
+        if (!phy_send_q.empty()){
+            cout<<"SOMETHING IN Q"<<endl;
+            
+            
+            if(FD_ISSET(thefd, &write_flags)) { //Socket ready for writing
+                FD_CLR(thefd, &write_flags);
+                cout<<"SENDING"<<endl;
+                strcpy(inbuff,"TEST22");
+                write(thefd,inbuff,strlen(inbuff));
+                memset(&inbuff,0,sizeof(inbuff));
+                
+                pthread_mutex_lock( &mutex_phy_send );
+                phy_send_q.pop();
+                pthread_mutex_unlock( &mutex_phy_send );
+            }
+        }
+        // now the loop repeats over again
+    }
 
-			//Remove sent item from queue
-			pthread_mutex_lock( &mutex_phy_send );
-			phy_send_q.pop();
-			pthread_mutex_unlock( &mutex_phy_send );
-			}
-	}
-	cout<<"phy_send_t (THREAD) Died"<<endl;
-	close(socketfd);
+    
 }
-
-//Phyiscal Layer Receive
-//Receives data from TCP socket and places it in phy_receive_q
-void *phy_receive_t(void* num){
-
-	int n;
-	sleep(1);
-
-	//setup connection
-	int socketfd=phy_setup_server(PORT+1);
-	
-	char buffer[BUFFER_SIZE];
-	while(alive){
-		//Wait for packet to be received
-		bzero(buffer, BUFFER_SIZE);//Clear buffer
-		n = read(socketfd, buffer, BUFFER_SIZE - 1);
-                if (n < 0) diewithError("ERROR reading from socket");
-		cout<<"Message Received: "<<buffer<<endl;
-		//Add frame to queue
-		if (strcmp(buffer,"DONE")==0){//leave 
-			alive=0;
-			cout<<"STOPPING PHY RECEIVE THREAD"<<endl;
-			break;
-		}
-		pthread_mutex_lock( &mutex_phy_receive );
-		phy_receive_q.push(buffer);
-		pthread_mutex_unlock( &mutex_phy_receive );
-
-		cout<<phy_receive_q.front()<<endl;
-	}
-	cout<<"phy_receive_t (THREAD) Died"<<endl;
-	close(socketfd);
-}
-
 
 
 
