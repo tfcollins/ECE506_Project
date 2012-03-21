@@ -93,7 +93,7 @@ int main(){
 } //main
 
 int wait_for_event(void){
-	 int event=0;
+	int event=0;
 
     if (!phy_receive_q.empty())
         event=1;
@@ -123,15 +123,8 @@ static void send_data(int frame_to_send, int frame_expected, char buff){
 
 //Returns true if a<=b<c, else false.
 static bool between(int a, int b, int c){
-	if (((a <= b)&&(b<c)) || ((c<a)&&(a<=b)) || ((b<c)&&(c<a)))
+	if (((a<=b)&&(b<c)) || ((c<a)&&(a<=b)) || ((b<c)&&(c<a)))
 		return(true);
 	else
 		return(false);
 }
-
-
-
-
-
-
-
