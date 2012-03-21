@@ -19,12 +19,16 @@
 #include <queue>
 #include <deque>
 #include <time.h>
+#include <fcntl.h>
 
 using namespace std;
 
 void diewithError(string message);
 int phy_setup(int port, struct hostent *serv);
-int phy_setup_server(int port);
+int phy_setup_server1(int port);
+int phy_setup_server2(int port);
+int doconnect(char *address, int port);
+int SSconnect(int port);
 
 extern int PORT;
 extern char* HOSTNAME;
