@@ -35,48 +35,65 @@ int main(int argc, char *argv[]){
 	PORT=atoi(argv[1]);
 	//HOSTNAME=argv[2];	
 
-	pthread_t phy_send_thread, phy_receive_thread, phy_layer_thread;
-	int iret1, iret2;
+	//pthread_t phy_send_thread, phy_receive_thread, phy_layer_thread;
+	//int iret1, iret2;
 	//iret1 = pthread_create( &phy_send_thread, NULL, phy_send_t, (void*) 1);
 	//iret2 = pthread_create( &phy_receive_thread, NULL, phy_receive_t, (void*) 1);
-    iret2 = pthread_create( &phy_layer_thread, NULL, phy_layer_t, (void*) 1);
 
-    
-	//Thread status info, consider moving to own thread
-    int count=0;
-	while(alive){
-		sleep(1);
-        count++;
-		cout<<"Phy Send Thread Size:"<<phy_send_q.size()<<endl;
-		cout<<"Phy Receive Thread Size:"<<phy_receive_q.size()<<endl;
+	//Setup Socket
+        int sockfd, portno;
+        socklen_t clilen;
+        void *newsockfd;
+        struct sockaddr_in serv_addr, cli_addr;
+        sockfd = socket(AF_INET, SOCK_STREAM, 0);
+        if (sockfd < 0)
+                diewithError("ERROR opening socket");
+        bzero((char *) &serv_addr, sizeof(serv_addr));
+        portno = PORT;
 
-		if (!phy_receive_q.empty()){
-			//Echo Back
-			pthread_mutex_lock( &mutex_phy_send );
-			phy_send_q.push(phy_receive_q.front());
-			pthread_mutex_unlock( &mutex_phy_send );
-			cout<<"Echo Message Back"<<endl;			
-			pthread_mutex_lock( &mutex_phy_receive );
-			phy_receive_q.pop();	
-			pthread_mutex_unlock( &mutex_phy_receive );
-	
+	//Basic Socket Parameters
+        serv_addr.sin_family = AF_INET;
+        serv_addr.sin_addr.s_addr = INADDR_ANY;
+        serv_addr.sin_port = htons(portno);
+        if (bind(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0)
+                diewithError("ERROR on binding");
+        listen(sockfd, 5);
+        clilen = sizeof(cli_addr);
+
+	//Threads
+	int *socket[10];
+	pthread_t phy_layer_thread[10];
+
+	int client=0;
+	int rc;
+
+	try{
+		while(1){
+			//Wait for clients
+			socket[client]=(int *) malloc(sizeof(int));
+			*socket[client]=accept(sockfd, (struct sockaddr *) &cli_addr, &clilen);
+			cout<<"Socket Accepted"<<endl;
+	    
+			 // Mark the socket as non-blocking, for safety.
+			int x;
+			x=fcntl(*socket[client],F_GETFL,0);
+			fcntl(*socket[client],F_SETFL,x | O_NONBLOCK);
+			if(*socket[client]==-1) diewithError("Could not connect to client");
+			cout<<"SOCKET SETUP FOR NONBLOCKING"<<endl;
+
+			//Spawn Thread
+			rc = pthread_create( &phy_layer_thread[client], NULL, phy_layer_t, (void*) socket[client]);
+			if(rc)diewithError("ERROR; return code from pthread_create()");
+			client++;
+
 		}
-        if (count==5){
-            pthread_mutex_lock( &mutex_phy_send );
-			phy_send_q.push("TeST2");
-			pthread_mutex_unlock( &mutex_phy_send );
-            
-        }
-            
-    }
-
-	//Stop threads
-	alive=0;
-	//pthread_cancel(phy_send_thread);
-	//pthread_cancel(phy_receive_thread);
-    pthread_cancel(phy_layer_thread);
-
-    
+	}
+	catch(int e) {
+		//Stop threads
+		alive=0;
+		for(int i=0;i<client;i++)
+			pthread_cancel(phy_layer_thread[i]);
+    	}
 	return 0;
 
 }
@@ -87,26 +104,21 @@ int main(int argc, char *argv[]){
 
 void *phy_layer_t(void* num){
 
+    //Set socket num
+    int n;
+    int thefd;             // The socket
+    int *id_ptr, socketfd;
+    id_ptr = (int *) num;
+    thefd = *id_ptr;
+
+    //Other declarations
     fd_set read_flags,write_flags; // you know what these are
     struct timeval waitd;          
-    int thefd;             // The socket
     char outbuff[256];     // Buffer to hold outgoing data
     char inbuff[256];      // Buffer to read incoming data into
     int err;	       // holds return values
     
     memset(&outbuff,0,sizeof(outbuff)); // memset used for portability
-    thefd=phy_setup_server1(PORT); // Connect to the finger port
-    
-    // Mark the socket as non-blocking, for safety.
-    int x;
-    x=fcntl(thefd,F_GETFL,0);
-    fcntl(thefd,F_SETFL,x | O_NONBLOCK);
-    
-    if(thefd==-1) {
-        printf("Could not connect to finger server\n");
-        exit(0);
-    }
-    cout<<"SOCKET SETUP WOOTZ"<<endl;
     
     while(1) {
         FD_ZERO(&read_flags); // Zero the flags ready for using
@@ -124,7 +136,7 @@ void *phy_layer_t(void* num){
             cout<<"trying to read"<<endl;
             if (read(thefd, inbuff, sizeof(inbuff)-1) <= 0) {
                 close(thefd);
-                diewithError("Socket Bug socket closed");
+                cout<<"Socket Closed"<<endl;
                 break;
             }
             else{
@@ -155,6 +167,7 @@ void *phy_layer_t(void* num){
         // now the loop repeats over again
     }
 
+	close(thefd);//close socket and leave
     
 }
 
