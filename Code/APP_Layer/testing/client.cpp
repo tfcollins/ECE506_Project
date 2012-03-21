@@ -1,4 +1,5 @@
 //Generic APP_Layer testing
+//Need queues
 //JES
 
 //Client
@@ -13,25 +14,26 @@ int main(int argc, char *argv[]) {
 	struct hostent *server;
 
 	//Ensure correct number of inputs
-	if (argc != 8) {
-		fprintf(stderr, "usage:\n %s server login <username> <location> <job> <smelly>\n", argv[0]);
+	if (argc != 7) {
+		fprintf(stderr, "usage:\n %s server login <username> <location> <age> <hobby>\n", argv[0]);
 		exit(0);
 	}
 	//If not login
-	if (strcmp(argv[3],"login") != 0) {
+	if (strcmp(argv[2],"login") != 0) {
 		cout << "Please login!\n";
-		fprintf(stderr, "usage:\n %s server login <username> <location> <job> <smelly>\n", argv[0]);
+		fprintf(stderr, "usage:\n %s server login <username> <location> <age> <hobby>\n", argv[0]);
 		exit(0);
 	}
+
 	//Profile and username information
-	string username (argv[4]);
-	string location (argv[5]);
-	string job (argv[6]);
-	string smelly (argv[7]);
+	string username (argv[3]);
+	string location (argv[4]);
+	string job (argv[5]);
+	string hobby (argv[6]);
 
 	//Build login and profile information buffer
 	string buffer;
-	buffer = username + "#" + location + "#" + job + "#" + smelly;
+	buffer = "#" + username + "#" + location + "#" + job + "#" + hobby;
 
 	//Check if input longer than 256
 	//Eventually split up if larger than 256
@@ -42,12 +44,6 @@ int main(int argc, char *argv[]) {
 	if (server == NULL) diewithError("Error, no such host!");
 	//sockfd = phy_setup(PORTNO, server);
 
-	//Physical Layer write()
-	/*
-	if (write(sockfd, buffer.c_str(), buffer.size()) < 0)
-		diewithError("write() failed");
-	*/
-
 	//TO DATA LINK LAYER
 	//dl_send(buffer);
 
@@ -55,23 +51,30 @@ int main(int argc, char *argv[]) {
 	//If successful, logged in
 	bool logged_in;
 	while (1) {
+		//buffer = dl_recv();
 		//Not sure what dl_recv will be, for now....
 		string received ("loggedin");
 		//received = dl_recv();
 		if (strcmp(received.c_str(), "loggedin") == 0){
 			logged_in = true;
-			cout << "Type 'help' for chatroom commands" << endl;
+			cout << "Welcome! Type 'help' for chatroom commands" << endl;
 		}
 
 		while (logged_in){
 			buffer.clear();
 			cout << "Enter input: ";
-			cin >> buffer;
-			if (buffer.compare("help") == 0){
-				printhelp();
-			//Do stuff with commands
-			//To be continued after weekend blackout
-			}
+			getline(cin,buffer);
+			if (buffer.compare("help") == 0) printhelp();
+			else if (buffer.compare("who") == 0) cout << "who";
+			else if (buffer.compare("history") == 0) cout << "history";
+			else cout << buffer << endl;
+			//Check buffer
+			int word = count_words(buffer.c_str());
+			istringstream totalString( buffer );
+			string command, input1;
+			totalString >> command >> input1;
+			cout << command << endl;
+			cout<< input1 << endl;
 		}
 	}
 	/*
@@ -114,6 +117,18 @@ void printhelp(void){
 	cout << "To download hosted files..." << endl;
 	cout << "	get <image.jpg>" <<endl;
 	cout << "To logout of the chatroom..." << endl;
-	cout << "logout" << endl;
+	cout << "	logout" << endl;
 	cout << "***************************" << endl;
+}
+
+int count_words(char *str){
+
+	int count=1;
+	char * token = strtok(str," ");
+	while (token != NULL){
+		count++;
+		token = strtok(NULL," ");
+	}
+
+	return count;
 }
