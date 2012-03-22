@@ -21,14 +21,11 @@
 using namespace std;
 
 
-struct timeval tv;
-struct timezone tz;
-struct tm *tm;
 
 //Window Size
 #define MAX_SEQ 4
 #define MAX_PKT 200
-#define MAX_TIMEOUT 80000 //fix later
+#define TIMEOUT_MAX 800000 //fix later
 
 #define PHY 1
 #define APP 2
@@ -49,25 +46,25 @@ typedef struct{
 } frame;
 
 int timers[4]={0};
+int queued = 0;
+
+
 
 static void send_data(int frame_to_send, int frame_expected, char buff);
 int wait_for_event(void);
 static bool between(int a, int b, int c);
 void *time_disp(void* num);
-in timeouts(void);
+int timeouts(void);
+frame deconstruct_frame(string input);
 
 
 int main(){
 	int frame_to_send = 0;
 	int frame_expected = 0;
 	int ack_expected = 0;
-	int queued = 0;
 	int rc;
 	frame buffer;
 
-	gettimeofday(&tv, &tz);
-	tm=localtime(&tv.tv_sec);
-	
 	//Spawn Timers Status Thread
 	pthread_t thread;
         rc = pthread_create(&thread, NULL, time_disp , (void *) 1);
@@ -83,28 +80,35 @@ int main(){
 
 			//If PHY Layer receives message
 			case (PHY):
-				buffer = phy_receive_q();
+				buffer = deconstruct_frame(phy_receive_q.front());
 				//If input is expected packet
 				if (buffer.seq_NUM == frame_expected) {
 					to_app_layer(buffer.data);
 					frame_expected++;
 				}
 				//Check Cumulative ACKs
+				int k=0;
 				while (between(ack_expected, buffer.ack_NUM, frame_to_send)) {
-					queued = queued--;
-					stop_timer(ack_expected);
+					//stop timer
+					timers[k]=999999999999;//reset timer
+					k++;
+					if (queued==0)
+						queued=3;
+					else
+						queued--;
 					ack_expected++;
-					phy_receive_q.pop();
+					//phy_receive_q.pop();
 				}
 				break;
 
 			//If APP Layer wants to send message
 			case (APP):
-				char data = dl_send_q();
+				char data = dl_send_q.front();
 				//Send buffer to physical layer
 				//Include seq number for packing
 				send_data(frame_to_send, frame_expected, data);
 				frame_to_send++;
+				queued=(queued++)%4;//cycle to next q
 				break;
 
 			//If No ACK received, and timeout
@@ -116,13 +120,13 @@ int main(){
 					send_data(frame_to_send, frame_expected, data);
 					frame_to_send++;
 					//Reset Timer(s)
-					timers[i]=tv.tv_usec;
+					timers[i]=current_time();
 					//clear the queue
 				}
 				break;
 		} //switch(event)
 
-		if (queued > MAX_SEQ) cout >> "FUCK";
+		if (queued > MAX_SEQ) cout << "FUCK"<<endl;
 		//STOP putting stuff in the queue, or reset queue.
 
 	} //while(1)
@@ -144,7 +148,7 @@ int wait_for_event(void){
 return event;
 }
 
-static void send_data(int frame_to_send, int frame_expected, char buff){
+static void send_data(int frame_to_send, int frame_expected, string buff){
 	/*
 	frame s;
 
@@ -155,8 +159,8 @@ static void send_data(int frame_to_send, int frame_expected, char buff){
 	string tosend;
 	tosend = s.seq_NUM + s.ack_NUM + s.data;
 	*/
-	string tosend = frame_to_send + "#" + frame_expected + "#" + buff;
-	phy_send_q.push(tosend);
+	string tosend = itoa(frame_to_send) + '\a' + itoa(frame_expected) + '\a' + buff;
+	//phy_send_q.push(tosend);
 }
 
 //Returns true if a<=b<c, else false.
@@ -166,14 +170,12 @@ static bool between(int a, int b, int c){
 	else
 		return(false);
 }
-<<<<<<< HEAD
-=======
 
 
 //Check Timeout
-in timeouts(void){
+int timeouts(void){
 
-	current=tv.tv_usec;
+	int current=current_time();
 	//Look at times
 	for (int i=0;i<queued;i++)
 		if ((current-timers[i])>TIMEOUT_MAX)
@@ -185,14 +187,75 @@ in timeouts(void){
 
 //Print out timers
 void *time_disp(void* num){
-	int old_times[4]={0};
+	int old_time[4]={0};
 	//Update if times have changed
 	while(1)
 		if (old_time[0]!=timers[0] || old_time[1]!=timers[1] || old_time[2]!=timers[2] || old_time[3]!=timers[3]){
 			cout<<"Timers 1:"<<timers[0]<<"Timers 2:"<<timers[0]<<"Timers 3:"<<timers[0]<<"Timers 4:"<<timers[0]<<'\r'; 
 			for (int i=0;i<4;i++)
-				old_times[i]=timers[i];//Update old times
+				old_time[i]=timers[i];//Update old times
 		}
 
 }
->>>>>>> 0c12681de055878fd87aaecdccb36bc9815b2e90
+
+//Get current time
+long current_time(){
+	
+	struct timeval tv;
+        struct timezone tz;
+        struct tm *tm;
+        gettimeofday(&tv,&tz);
+        tm=localtime(&tv.tv_sec);
+	long total=(tm->tm_min*1000000000+tm->tm_sec*1000000+tv.tv_usec);
+	return total;
+}
+
+
+//Deconstruct Frame from PHY Layer
+frame deconstruct_frame(string input){
+
+        frame buffer;
+        int i=0;
+        char temp[200];
+
+        //Find  Sequence Num
+        for (i=0;i<input.size();i++){
+                if (input[i]=='\a'){
+                        cout<<atoi(temp)<<endl;
+                        buffer.seq_NUM=atoi(temp);
+                        cout<<"BREAK"<<endl;
+                        break;
+                }
+                else
+                        temp[i]=input[i];
+        }
+        //Find ACK Number
+        char temp2[200];//clear
+        i++;
+        int j=i;
+        while(i<input.size()){
+                if (input[i]=='\a'){
+                        cout<<atoi(temp2)<<endl;
+                        buffer.ack_NUM=atoi(temp2);
+                        cout<<"BREAK"<<endl;
+                        i++;
+                        break;
+                }
+                else{
+                        temp2[i-j]=input[i];
+                        i++;
+                }
+        }
+        //Find Message
+        j=i;
+        while(i<(input.size())){
+                cout<<input[i]<<":"<<(i-j)<<endl;
+                buffer.data[i-j]=input[i];
+                i++;
+        }
+
+        return buffer;
+}
+
+
+
