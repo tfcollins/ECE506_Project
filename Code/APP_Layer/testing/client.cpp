@@ -62,19 +62,37 @@ int main(int argc, char *argv[]) {
 
 		while (logged_in){
 			buffer.clear();
+			//Read in user input
 			cout << "Enter input: ";
 			getline(cin,buffer);
+			//Determine if possible input
+			char *buffin = &buffer[0];
+			int word = count_words(buffin);
+
+			istringstream totalString(buffer);
+			string command, input;
+			totalString >> command >> input;
+			cout << buffer << endl;
+
+			switch(word){
+				case(1):
+					totalString >> command;
+					cout << "Sending " << command << " to server." << endl;
+					break;
+				case(2):
+					totalString >> command >> input;
+					cout << "Sending " << command << endl;// + " " << input << " to server" << endl;
+					break;
+				default:
+					cout << "Error, too many inputs!" << endl;
+					printhelp();
+					break;
+			}
+
 			if (buffer.compare("help") == 0) printhelp();
 			else if (buffer.compare("who") == 0) cout << "who";
 			else if (buffer.compare("history") == 0) cout << "history";
-			else cout << buffer << endl;
-			//Check buffer
-			int word = count_words(buffer.c_str());
-			istringstream totalString( buffer );
-			string command, input1;
-			totalString >> command >> input1;
-			cout << command << endl;
-			cout<< input1 << endl;
+
 		}
 	}
 	/*
@@ -123,7 +141,7 @@ void printhelp(void){
 
 int count_words(char *str){
 
-	int count=1;
+	int count=0;
 	char * token = strtok(str," ");
 	while (token != NULL){
 		count++;
