@@ -99,12 +99,22 @@ int main(){
 //gettimeofday(&tv,&tz);
 //tm=localtime(&tv.tv_sec);
 //printf("StartTime: %d:%02d:%02d %d \n", tm->tm_hour, tm->tm_min, tm->tm_sec, tv.tv_usec);
-while(1){
-cout<<current_time()<<endl;
-sleep(1);
-cout<<current_time()<<endl;
-sleep(1);
-}
+
+//while(1){
+//cout<<current_time()<<endl;
+//sleep(1);
+//cout<<current_time()<<endl;
+//sleep(1);
+//}
+
+
+int n = 123;
+
+char c[20];
+sprintf(c, "%d", n);
+
+cout<<c<<endl;
+
 return 0;
 
 }

@@ -16,6 +16,11 @@
 #include <netdb.h>
 #include <sys/types.h>
 #include <pthread.h>          //For POSIX threads 
+#include <list>
+#include <queue>
+#include <deque>
+#include <time.h>
+#include <fcntl.h>
 
 using namespace std;
 
@@ -26,5 +31,13 @@ int phy_setup(int port, struct hostent *server);
 int count_words(char *str);
 
 
+//Globals
+queue<string> phy_send_q;
+queue<string> phy_receive_q;
+queue<string> dl_send_q;
+queue<string> dl_receive_q;
+queue<string> app_send_q;
+queue<string> app_receive_q;
+queue<string> window_q;
 
 #endif

@@ -45,12 +45,14 @@ typedef struct{
 	char data[MAX_PKT];
 } frame;
 
-int timers[4]={0};
+//globals
+long timers[4]={0};
 int queued = 0;
 int k;
+string data;
 
-
-static void send_data(int frame_to_send, int frame_expected, char buff);
+//function prototypes
+static void send_data(int frame_to_send, int frame_expected, string buff);
 int wait_for_event(void);
 static bool between(int a, int b, int c);
 void *time_disp(void* num);
@@ -58,6 +60,8 @@ int timeouts(void);
 frame deconstruct_frame(string input);
 long current_time();
 
+pthread_mutex_t mutex_app_receive_q = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutex_window_q = PTHREAD_MUTEX_INITIALIZER;
 
 int main(){
 	int frame_to_send = 0;
@@ -84,7 +88,10 @@ int main(){
 				buffer = deconstruct_frame(phy_receive_q.front());
 				//If input is expected packet
 				if (buffer.seq_NUM == frame_expected) {
-					to_app_layer(buffer.data);
+					pthread_mutex_lock( &mutex_app_receive_q);	
+					//Add messages to app_layer_q, there will be a helper function that returns when something exists in q
+					app_receive_q.push(buffer.data);
+					pthread_mutex_unlock( &mutex_app_receive_q);	
 					frame_expected++;
 				}
 				//Check Cumulative ACKs
@@ -95,8 +102,10 @@ int main(){
 					k++;
 					if (queued==0)
 						queued=3;
-					else
+					else{
 						queued--;
+						window_q.pop();
+					}
 					ack_expected++;
 					//phy_receive_q.pop();
 				}
@@ -104,7 +113,8 @@ int main(){
 
 			//If APP Layer wants to send message
 			case (APP):
-				char data = dl_send_q.front();
+				data = dl_send_q.front();
+				window_q.push(data);//Save if needed for retransmission
 				//Send buffer to physical layer
 				//Include seq number for packing
 				send_data(frame_to_send, frame_expected, data);
@@ -117,7 +127,13 @@ int main(){
 				frame_to_send = ack_expected;
 				//Reset N Frames
 				for (int i = 0; i <= queued; i++){
-					data = dl_send_q();
+					
+					data = window_q.front();//Get oldest data to send first
+					//Cycle Queue, so we push just oldest message to back, it will reach the front once all windowed messages are sent
+					window_q.push(window_q.front());
+					window_q.pop();
+
+					//data = dl_send_q();
 					send_data(frame_to_send, frame_expected, data);
 					frame_to_send++;
 					//Reset Timer(s)
@@ -160,8 +176,17 @@ static void send_data(int frame_to_send, int frame_expected, string buff){
 	string tosend;
 	tosend = s.seq_NUM + s.ack_NUM + s.data;
 	*/
-	string tosend = itoa(frame_to_send) + '\a' + itoa(frame_expected) + '\a' + buff;
-	//phy_send_q.push(tosend);
+
+	//Convert Integers to Characters
+	char frame_expected_c[20];
+	char frame_to_send_c[20];
+	sprintf(frame_expected_c, "%d", frame_expected);
+	sprintf(frame_to_send_c, "%d", frame_to_send);
+		
+
+
+	string tosend = string(frame_to_send_c) + '\a' + frame_expected_c + '\a' + buff;
+	phy_send_q.push(tosend);
 }
 
 //Returns true if a<=b<c, else false.
@@ -257,6 +282,10 @@ frame deconstruct_frame(string input){
 
         return buffer;
 }
+
+
+
+
 
 
 
