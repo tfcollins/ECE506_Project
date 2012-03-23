@@ -47,7 +47,7 @@ typedef struct{
 
 int timers[4]={0};
 int queued = 0;
-
+int k;
 
 
 static void send_data(int frame_to_send, int frame_expected, char buff);
@@ -56,6 +56,7 @@ static bool between(int a, int b, int c);
 void *time_disp(void* num);
 int timeouts(void);
 frame deconstruct_frame(string input);
+long current_time();
 
 
 int main(){
@@ -87,7 +88,7 @@ int main(){
 					frame_expected++;
 				}
 				//Check Cumulative ACKs
-				int k=0;
+				k=0;
 				while (between(ack_expected, buffer.ack_NUM, frame_to_send)) {
 					//stop timer
 					timers[k]=999999999999;//reset timer
@@ -175,7 +176,7 @@ static bool between(int a, int b, int c){
 //Check Timeout
 int timeouts(void){
 
-	int current=current_time();
+	long current=current_time();
 	//Look at times
 	for (int i=0;i<queued;i++)
 		if ((current-timers[i])>TIMEOUT_MAX)
