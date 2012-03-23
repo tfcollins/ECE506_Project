@@ -51,6 +51,18 @@ int queued = 0;
 int k;
 string data;
 
+pthread_mutex_t mutex_phy_send = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutex_phy_receive = PTHREAD_MUTEX_INITIALIZER;
+//pthread_mutex_init( &mutex_phy_send , NULL);
+//pthread_mutex_init( &mutex_phy_receive , NULL);
+
+pthread_mutex_t mutex_socket = PTHREAD_MUTEX_INITIALIZER;
+
+pthread_mutex_t mutex_app_send_q = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutex_app_receive_q = PTHREAD_MUTEX_INITIALIZER;
+
+pthread_mutex_t mutex_window_q = PTHREAD_MUTEX_INITIALIZER;
+
 //function prototypes
 static void send_data(int frame_to_send, int frame_expected, string buff);
 int wait_for_event(void);
@@ -60,8 +72,8 @@ int timeouts(void);
 frame deconstruct_frame(string input);
 long current_time();
 
-pthread_mutex_t mutex_app_receive_q = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t mutex_window_q = PTHREAD_MUTEX_INITIALIZER;
+//pthread_mutex_t mutex_app_receive_q = PTHREAD_MUTEX_INITIALIZER;
+//pthread_mutex_t mutex_window_q = PTHREAD_MUTEX_INITIALIZER;
 
 int main(){
 	int frame_to_send = 0;
@@ -69,6 +81,14 @@ int main(){
 	int ack_expected = 0;
 	int rc;
 	frame buffer;
+
+	//Initalize Physical Layer
+	pthread_t phy_thread;
+	rc = pthread_create(&phy_thread, NULL, phy_layer_server, (void *) 1);
+	if (rc){
+		cout<<"Physical Layer Thread Failed to be created"<<endl;
+		exit(1);
+	}
 
 	//Spawn Timers Status Thread
 	pthread_t thread;
