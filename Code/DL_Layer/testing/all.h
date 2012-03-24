@@ -40,6 +40,7 @@ extern pthread_mutex_t mutex_app_send_q;
 extern pthread_mutex_t mutex_app_receive_q;
 extern pthread_mutex_t mutex_window_q;
 
+extern int PORT;
 
 //Function prototypes
 void diewithError(string message);

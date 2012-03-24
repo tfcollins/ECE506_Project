@@ -23,7 +23,7 @@ using namespace std;
 //Window Size
 #define MAX_SEQ 4
 #define MAX_PKT 200
-#define TIMEOUT_MAX 800000 //fix later
+#define TIMEOUT_MAX 80000000 //fix later
 
 #define PHY 1
 #define APP 2
@@ -83,33 +83,45 @@ void *dl_layer_server(void *num){
 	}
 	
 	//Spawn Timers Status Thread, updates when timers change
-	pthread_t thread;
+	/*pthread_t thread;
         rc = pthread_create(&thread, NULL, time_disp , (void *) 1);
 	if (rc){
 		cout<<"Something bad happened with thread creation :("<<endl;
 		exit(1);
-	}
+	}*/
 	
 
 	//Wait for events to happen
 	while (1) {
 		cout<<"Waiting for event (DL)"<<endl;
 		int event=wait_for_event();
-		cout<<"Event Occurred (DL)"<<endl;
+		cout<<"Event Occurred: "<<event<<"(DL)"<<endl;
 		switch (event) {
 
 			//If PHY Layer receives message
 			case (PHY):
+				bzero(&buffer.data,sizeof(buffer.data));
 				buffer = deconstruct_frame(phy_receive_q.front());
+				cout<<"Message Deconstructed"<<endl;
+				cout<<"Original:"<<phy_receive_q.front()<<endl;
+				cout<<"Data: "<<buffer.data<<" seq_NUM: "<<buffer.seq_NUM<<" ack_NUM: "<<buffer.ack_NUM<<endl; 
 				//If input is expected packet
 				if (buffer.seq_NUM == frame_expected) {
-					pthread_mutex_lock( &mutex_app_receive_q);	
+					//pthread_mutex_lock( &mutex_app_receive_q);	
 					//Add messages to app_layer_q, there will be a helper function that returns when something exists in q
 					app_receive_q.push(buffer.data);
-					pthread_mutex_unlock( &mutex_app_receive_q);	
+					//pthread_mutex_unlock( &mutex_app_receive_q);	
 					frame_expected++;
 				}
 				//Check Cumulative ACKs
+				//HOW DOES THIS WORK??????
+				//TEMP
+				//pthread_mutex_lock(&mutex_phy_receive);
+				phy_receive_q.pop();
+				//pthread_mutex_unlock(&mutex_phy_receive);
+				//TEMP
+				
+				/*
 				k=0;
 				while (between(ack_expected, buffer.ack_NUM, frame_to_send)) {
 					//stop timer
@@ -122,13 +134,24 @@ void *dl_layer_server(void *num){
 						window_q.pop();
 					}
 					ack_expected++;
-					//phy_receive_q.pop();
+					//pthread_mutex_lock(&mutex_phy_receive);
+					phy_receive_q.pop();
+					//pthread_mutex_unlock(&mutex_phy_receive);
 				}
+
+				*/
+
+
+				//SEND ACK if data message
+				//pthread_mutex_lock(&mutex_phy_send);
+				phy_send_q.push("ACK");
+				//pthread_mutex_lock(&mutex_phy_send);
 				break;
 
 			//If APP Layer wants to send message
 			case (APP):
 				data = dl_send_q.front();
+				dl_send_q.pop();
 				window_q.push(data);//Save if needed for retransmission
 				//Send buffer to physical layer
 				//Include seq number for packing
@@ -157,6 +180,7 @@ void *dl_layer_server(void *num){
 				}
 				break;
 		} //switch(event)
+		cout<<"Event Completed (DL)"<<endl;//Done with that event
 
 		if (queued > MAX_SEQ) cout << "FUCK (DL)"<<endl;
 		//STOP putting stuff in the queue, or reset queue.
@@ -164,36 +188,27 @@ void *dl_layer_server(void *num){
 	} //while(1)
 } //main
 
+//SUPPORT FUNCTIONS//////////////////
 
 //Trigger when event occurs
 int wait_for_event(void){
 	int event=0;
 	while(event<1){
-    if (!phy_receive_q.empty())
-        event=1;
-    else if (!dl_send_q.empty())
-        event=2;
-    else if (timeouts())//Need a timeout function
-        event=3;
-    //else
-      //  wait_for_event();
+	    if (!phy_receive_q.empty())
+		event=1;
+	    else if (!dl_send_q.empty())
+		event=2;
+	    else if (timeouts())//Need a timeout function
+		event=3;
+	    //else
+	      //  wait_for_event();
 	}
 
 	return event;
 }
 
 static void send_data(int frame_to_send, int frame_expected, string buff){
-	/*
-	frame s;
-
-	s.seq_NUM = frame_to_send;
-	s.ack_NUM = frame_expected + MAX_SEQ;
-	s.data = buff;
-
-	string tosend;
-	tosend = s.seq_NUM + s.ack_NUM + s.data;
-	*/
-
+	
 	//Convert Integers to Characters
 	char frame_expected_c[20];
 	char frame_to_send_c[20];
@@ -222,7 +237,7 @@ int timeouts(void){
 	//Look at times
 	for (int i=0;i<queued;i++)
 		if ((current-timers[i])>TIMEOUT_MAX){
-			cout<<"Timeout occued (DL)"<<endl;
+			cout<<"Timeout occured (DL)"<<endl;
 			return 1;//Timeout occured
 		}
 	//cout<<"No timeouts"<<'\r';
@@ -236,8 +251,7 @@ void *time_disp(void* num){
 	//Update if times have changed
 	while(1)
 		if (old_time[0]!=timers[0] || old_time[1]!=timers[1] || old_time[2]!=timers[2] || old_time[3]!=timers[3]){
-			cout<<"Update Timers"<<endl;
-			cout<<"Timers 1:"<<timers[0]<<"Timers 2:"<<timers[0]<<"Timers 3:"<<timers[0]<<"Timers 4:"<<timers[0]<<'\r'; 
+			cout<<"Timers 1:"<<timers[0]<<" Timers 2:"<<timers[0]<<" Timers 3:"<<timers[0]<<" Timers 4:"<<timers[0]<<endl;//'\r'; 
 			for (int i=0;i<4;i++)
 				old_time[i]=timers[i];//Update old times
 		}
@@ -259,16 +273,18 @@ long current_time(){
 //Deconstruct Frame from PHY Layer
 frame deconstruct_frame(string input){
 
-        frame buffer;
+	//CONSIDER USING p=strtok() for tokenization
+        frame buffer_temp;
+	bzero(&buffer_temp.data,200);//Clear out buffer structure
+	bzero(&buffer_temp.seq_NUM,sizeof(int));
+	bzero(&buffer_temp.ack_NUM,sizeof(int));
         int i=0;
         char temp[200];
-
+	
         //Find  Sequence Num
         for (i=0;i<input.size();i++){
                 if (input[i]=='\a'){
-                        cout<<atoi(temp)<<endl;
-                        buffer.seq_NUM=atoi(temp);
-                        cout<<"BREAK"<<endl;
+                        buffer_temp.seq_NUM=atoi(temp);
                         break;
                 }
                 else
@@ -280,9 +296,7 @@ frame deconstruct_frame(string input){
         int j=i;
         while(i<input.size()){
                 if (input[i]=='\a'){
-                        cout<<atoi(temp2)<<endl;
-                        buffer.ack_NUM=atoi(temp2);
-                        cout<<"BREAK"<<endl;
+                        buffer_temp.ack_NUM=atoi(temp2);
                         i++;
                         break;
                 }
@@ -294,11 +308,10 @@ frame deconstruct_frame(string input){
         //Find Message
         j=i;
         while(i<(input.size())){
-                cout<<input[i]<<":"<<(i-j)<<endl;
-                buffer.data[i-j]=input[i];
+                buffer_temp.data[i-j]=input[i];
                 i++;
         }
 
-        return buffer;
+        return buffer_temp;
 }
 

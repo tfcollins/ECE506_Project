@@ -1,7 +1,7 @@
 #include "all.h"
 
 
-#define PORT 5001
+//#define PORT 5001
 #define BUFFER_SIZE 256
 
 char* HOSTNAME;
@@ -105,10 +105,16 @@ void *phy_layer_t(void* num){
         FD_ZERO(&read_flags); // Zero the flags ready for using
         FD_ZERO(&write_flags);
         FD_SET(thefd, &read_flags);
-        if(!phy_send_q.empty()) FD_SET(thefd, &write_flags);
-        err=select(thefd+1, &read_flags,&write_flags,
-                   (fd_set*)0,&waitd);
-        if(err < 0) continue;
+
+    	memset(&outbuff,0,256); // memset used for portability
+    	memset(&inbuff,0,256); // memset used for portability
+
+        
+	//Something wants to be sent
+	if(!phy_send_q.empty()) FD_SET(thefd, &write_flags);
+
+        err=select(thefd+1, &read_flags,&write_flags,(fd_set*)0,&waitd);
+	if(err < 0) continue;//ERROR try next time around
         
         //READ SOMETHING
         if(FD_ISSET(thefd, &read_flags)) { //Socket ready for reading
@@ -121,29 +127,29 @@ void *phy_layer_t(void* num){
                 break;
             }
             else{
-                printf("%s\n",inbuff);
-                pthread_mutex_lock( &mutex_phy_receive );
+                //pthread_mutex_lock( &mutex_phy_receive );
                 phy_receive_q.push(inbuff);
-                pthread_mutex_unlock( &mutex_phy_receive );
+                //pthread_mutex_unlock( &mutex_phy_receive );
             }
         }
         
         //WRITE SOMETHING
-        if (!phy_send_q.empty()){
-            cout<<"Something in phy_sen_q (PHY)"<<endl;
-            
-            if(FD_ISSET(thefd, &write_flags)) { //Socket ready for writing
-                FD_CLR(thefd, &write_flags);
-                cout<<"Sending (PHY)"<<endl;
-                strcpy(inbuff,"TEST22");//Test reply
-                write(thefd,inbuff,strlen(inbuff));
-                memset(&inbuff,0,sizeof(inbuff));
-                
-                pthread_mutex_lock( &mutex_phy_send );
-                phy_send_q.pop();
-                pthread_mutex_unlock( &mutex_phy_send );
-            }
-        }
+    	if(FD_ISSET(thefd, &write_flags)) { //Socket ready for writing
+		FD_CLR(thefd, &write_flags);
+		cout<<"Sending (PHY)"<<endl;
+		
+		string temp=phy_send_q.front();
+		strcpy(outbuff,temp.c_str());
+
+		write(thefd,outbuff,strlen(outbuff));
+		cout<<"Sent (PHY)"<<endl;
+		memset(&outbuff,0,sizeof(outbuff));
+		
+		//pthread_mutex_lock( &mutex_phy_send );
+		phy_send_q.pop();
+		//pthread_mutex_unlock( &mutex_phy_send );
+
+	}
         // now the loop repeats over again
     }
 

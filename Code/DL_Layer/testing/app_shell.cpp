@@ -1,6 +1,14 @@
 #include "all.h"
 
-int main(){
+int PORT;
+
+int main(int argc, char *argv[]){
+
+	if (argc<2){
+		cout<<"Need Port"<<endl;
+		exit(1);
+	}
+	PORT=atoi(argv[1]);
 
 	//Start dl_layer
 	//Initalize Physical Layer
@@ -18,7 +26,12 @@ int main(){
 		sleep(1);
 		cout<<"Doing something, I hope (APP)"<<endl;
 		count++;
-		if (count==10)
+		if (count==12){
+			cout<<"Sending Message (APP)"<<endl;
+			dl_send_q.push("Message from APP_Layer");
+		}
+
+		if (count==50)
 			break;		
 	}
 
