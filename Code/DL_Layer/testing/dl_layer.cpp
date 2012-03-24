@@ -20,8 +20,6 @@
 
 using namespace std;
 
-
-
 //Window Size
 #define MAX_SEQ 4
 #define MAX_PKT 200
@@ -30,14 +28,6 @@ using namespace std;
 #define PHY 1
 #define APP 2
 #define TIME_OUT 3
-
-//NOTES
-/*
-
-
-
-
-*/
 
 typedef struct{
 	int seq_NUM;
@@ -77,7 +67,7 @@ pthread_mutex_t mutex_app_receive_q = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutex_window_q = PTHREAD_MUTEX_INITIALIZER;
 
 
-int main(){
+void *dl_layer_server(void *num){
 	int frame_to_send = 0;
 	int frame_expected = 0;
 	int ack_expected = 0;

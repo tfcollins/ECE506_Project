@@ -50,5 +50,6 @@ void *phy_layer_server(void *num);
 int phy_setup(int port, struct hostent *serv);
 int phy_setup_server1(int port);
 void *phy_layer_t(void *num);
+void *dl_layer_server(void *num);
 
 #endif
