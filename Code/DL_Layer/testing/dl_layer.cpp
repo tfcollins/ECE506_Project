@@ -93,9 +93,9 @@ void *dl_layer_server(void *num){
 
 	//Wait for events to happen
 	while (1) {
-		cout<<"Waiting for event"<<endl;
+		cout<<"Waiting for event (DL)"<<endl;
 		int event=wait_for_event();
-		cout<<"\nEvent Occurred!!!!!!!!!!!!!!!!!\n"<<endl;
+		cout<<"Event Occurred (DL)"<<endl;
 		switch (event) {
 
 			//If PHY Layer receives message
@@ -158,7 +158,7 @@ void *dl_layer_server(void *num){
 				break;
 		} //switch(event)
 
-		if (queued > MAX_SEQ) cout << "FUCK"<<endl;
+		if (queued > MAX_SEQ) cout << "FUCK (DL)"<<endl;
 		//STOP putting stuff in the queue, or reset queue.
 
 	} //while(1)
@@ -179,7 +179,6 @@ int wait_for_event(void){
       //  wait_for_event();
 	}
 
-	cout<<"Wait for event returned"<<endl;
 	return event;
 }
 
@@ -223,7 +222,7 @@ int timeouts(void){
 	//Look at times
 	for (int i=0;i<queued;i++)
 		if ((current-timers[i])>TIMEOUT_MAX){
-			cout<<"Timeout occued"<<endl;
+			cout<<"Timeout occued (DL)"<<endl;
 			return 1;//Timeout occured
 		}
 	//cout<<"No timeouts"<<'\r';

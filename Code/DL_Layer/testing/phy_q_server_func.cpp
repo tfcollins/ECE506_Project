@@ -50,20 +50,21 @@ void *phy_layer_server(void *num){
 		while(1){
 			//Wait for clients
 			socket[client]=(int *) malloc(sizeof(int));
-			cout<<"WAITING FOR CLIENTS(PHY)"<<endl;
+			cout<<"Waiting for clients (PHY)"<<endl;
 			*socket[client]=accept(sockfd, (struct sockaddr *) &cli_addr, &clilen);
-			cout<<"Socket Accepted"<<endl;
+			cout<<"Socket Accepted (PHY)"<<endl;
 	    
 			 // Mark the socket as non-blocking, for safety.
 			int x;
 			x=fcntl(*socket[client],F_GETFL,0);
 			fcntl(*socket[client],F_SETFL,x | O_NONBLOCK);
 			if(*socket[client]==-1) diewithError("Could not connect to client");
-			cout<<"SOCKET SETUP FOR NONBLOCKING"<<endl;
+			cout<<"Socket Made non-blocking (PHY)"<<endl;
 
 			//Spawn Thread
 			rc = pthread_create( &phy_layer_thread[client], NULL, phy_layer_t, (void*) socket[client]);
 			if(rc)diewithError("ERROR; return code from pthread_create()");
+			cout<<"Thread spawned for client (PHY)"<<endl;
 			client++;
 
 		}
@@ -113,7 +114,7 @@ void *phy_layer_t(void* num){
         if(FD_ISSET(thefd, &read_flags)) { //Socket ready for reading
             FD_CLR(thefd, &read_flags);
             memset(&inbuff,0,sizeof(inbuff));
-            cout<<"trying to read"<<endl;
+            cout<<"trying to read (PHY)"<<endl;
             if (read(thefd, inbuff, sizeof(inbuff)-1) <= 0) {
                 close(thefd);
                 cout<<"Socket Closed"<<endl;
@@ -129,13 +130,12 @@ void *phy_layer_t(void* num){
         
         //WRITE SOMETHING
         if (!phy_send_q.empty()){
-            cout<<"SOMETHING IN Q"<<endl;
-            
+            cout<<"Something in phy_sen_q (PHY)"<<endl;
             
             if(FD_ISSET(thefd, &write_flags)) { //Socket ready for writing
                 FD_CLR(thefd, &write_flags);
-                cout<<"SENDING"<<endl;
-                strcpy(inbuff,"TEST22");
+                cout<<"Sending (PHY)"<<endl;
+                strcpy(inbuff,"TEST22");//Test reply
                 write(thefd,inbuff,strlen(inbuff));
                 memset(&inbuff,0,sizeof(inbuff));
                 
