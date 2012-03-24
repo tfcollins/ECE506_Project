@@ -25,23 +25,21 @@
 using namespace std;
 
 //Globals
-queue<string> phy_send_q;
-queue<string> phy_receive_q;
-queue<string> dl_send_q;
-queue<string> dl_receive_q;
-queue<string> app_send_q;
-queue<string> app_receive_q;
-queue<string> window_q;
+extern queue<string> phy_send_q;
+extern queue<string> phy_receive_q;
+extern queue<string> dl_send_q;
+extern queue<string> dl_receive_q;
+extern queue<string> app_send_q;
+extern queue<string> app_receive_q;
+extern queue<string> window_q;
 
-/*
-extern pthread_mutex_t mutex_phy_send;// = PTHREAD_MUTEX_INITIALIZER;
-extern pthread_mutex_t mutex_phy_receive;// = PTHREAD_MUTEX_INITIALIZER;
+extern pthread_mutex_t mutex_phy_send;
+extern pthread_mutex_t mutex_phy_receive;
+extern pthread_mutex_t mutex_socket;
+extern pthread_mutex_t mutex_app_send_q;
+extern pthread_mutex_t mutex_app_receive_q;
+extern pthread_mutex_t mutex_window_q;
 
-pthread_mutex_t mutex_socket = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t mutex_app_send_q = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t mutex_app_receive_q = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t mutex_window_q = PTHREAD_MUTEX_INITIALIZER;
-*/
 
 //Function prototypes
 void diewithError(string message);
@@ -51,6 +49,6 @@ int count_words(char *str);
 void *phy_layer_server(void *num);
 int phy_setup(int port, struct hostent *serv);
 int phy_setup_server1(int port);
-
+void *phy_layer_t(void *num);
 
 #endif

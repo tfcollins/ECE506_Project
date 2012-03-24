@@ -11,9 +11,9 @@ void diewithError(string message) {
         exit(1);
 }
 
-void *phy_send_t(void* num);
-void *phy_receive_t(void* num);
-void *phy_layer_t(void* num);
+//void *phy_send_t(void* num);
+//void *phy_receive_t(void* num);
+//void *phy_layer_t(void* num);
 
 
 void *phy_layer_server(void *num){

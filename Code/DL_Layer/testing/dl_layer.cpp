@@ -45,23 +45,6 @@ typedef struct{
 	char data[MAX_PKT];
 } frame;
 
-//globals
-long timers[4]={0};
-int queued = 0;
-int k;
-string data;
-
-pthread_mutex_t mutex_phy_send = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t mutex_phy_receive = PTHREAD_MUTEX_INITIALIZER;
-//pthread_mutex_init( &mutex_phy_send , NULL);
-//pthread_mutex_init( &mutex_phy_receive , NULL);
-
-pthread_mutex_t mutex_socket = PTHREAD_MUTEX_INITIALIZER;
-
-pthread_mutex_t mutex_app_send_q = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t mutex_app_receive_q = PTHREAD_MUTEX_INITIALIZER;
-
-pthread_mutex_t mutex_window_q = PTHREAD_MUTEX_INITIALIZER;
 
 //function prototypes
 static void send_data(int frame_to_send, int frame_expected, string buff);
@@ -72,8 +55,27 @@ int timeouts(void);
 frame deconstruct_frame(string input);
 long current_time();
 
-//pthread_mutex_t mutex_app_receive_q = PTHREAD_MUTEX_INITIALIZER;
-//pthread_mutex_t mutex_window_q = PTHREAD_MUTEX_INITIALIZER;
+//globals
+long timers[4]={0};
+int queued = 0;
+int k;
+string data;
+
+queue<string> phy_send_q;
+queue<string> phy_receive_q;
+queue<string> dl_send_q;
+queue<string> dl_receive_q;
+queue<string> app_send_q;
+queue<string> app_receive_q;
+queue<string> window_q;
+
+pthread_mutex_t mutex_phy_send = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutex_phy_receive = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutex_socket = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutex_app_send_q = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutex_app_receive_q = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutex_window_q = PTHREAD_MUTEX_INITIALIZER;
+
 
 int main(){
 	int frame_to_send = 0;
@@ -302,10 +304,4 @@ frame deconstruct_frame(string input){
 
         return buffer;
 }
-
-
-
-
-
-
 
