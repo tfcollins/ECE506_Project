@@ -6,6 +6,7 @@ int main(){
 	//Initalize Physical Layer
         pthread_t dl_thread;
 	int rc;
+	cout<<"reached"<<endl;
         rc = pthread_create(&dl_thread, NULL, dl_layer_server, (void *) 1);
         if (rc){
                 cout<<"Data Link Layer Thread Failed to be created"<<endl;
@@ -16,7 +17,7 @@ int main(){
 	int count=0;
 	while(1){
 		sleep(1);
-		cout<<"Doing something, I hope"<<endl;
+		cout<<"Doing something, I hope\n"<<endl;
 		count++;
 		if (count==10)
 			break;		

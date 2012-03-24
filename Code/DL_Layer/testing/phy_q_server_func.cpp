@@ -18,6 +18,7 @@ void diewithError(string message) {
 
 void *phy_layer_server(void *num){
 
+	cout<<"Physical Active(PHY)"<<endl;
 	//Setup Socket
         int sockfd, portno;
         socklen_t clilen;
@@ -49,6 +50,7 @@ void *phy_layer_server(void *num){
 		while(1){
 			//Wait for clients
 			socket[client]=(int *) malloc(sizeof(int));
+			cout<<"WAITING FOR CLIENTS(PHY)"<<endl;
 			*socket[client]=accept(sockfd, (struct sockaddr *) &cli_addr, &clilen);
 			cout<<"Socket Accepted"<<endl;
 	    

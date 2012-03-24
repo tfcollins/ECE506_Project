@@ -66,7 +66,7 @@ pthread_mutex_t mutex_app_send_q = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutex_app_receive_q = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutex_window_q = PTHREAD_MUTEX_INITIALIZER;
 
-
+//Data Link Layer Master Thread
 void *dl_layer_server(void *num){
 	int frame_to_send = 0;
 	int frame_expected = 0;
@@ -81,18 +81,21 @@ void *dl_layer_server(void *num){
 		cout<<"Physical Layer Thread Failed to be created"<<endl;
 		exit(1);
 	}
-
-	//Spawn Timers Status Thread
+	
+	//Spawn Timers Status Thread, updates when timers change
 	pthread_t thread;
         rc = pthread_create(&thread, NULL, time_disp , (void *) 1);
 	if (rc){
 		cout<<"Something bad happened with thread creation :("<<endl;
 		exit(1);
 	}
+	
 
+	//Wait for events to happen
 	while (1) {
-
+		cout<<"Waiting for event"<<endl;
 		int event=wait_for_event();
+		cout<<"\nEvent Occurred!!!!!!!!!!!!!!!!!\n"<<endl;
 		switch (event) {
 
 			//If PHY Layer receives message
@@ -165,16 +168,19 @@ void *dl_layer_server(void *num){
 //Trigger when event occurs
 int wait_for_event(void){
 	int event=0;
-
+	while(event<1){
     if (!phy_receive_q.empty())
         event=1;
     else if (!dl_send_q.empty())
         event=2;
     else if (timeouts())//Need a timeout function
         event=3;
-    else
-        wait_for_event();
-return event;
+    //else
+      //  wait_for_event();
+	}
+
+	cout<<"Wait for event returned"<<endl;
+	return event;
 }
 
 static void send_data(int frame_to_send, int frame_expected, string buff){
@@ -216,9 +222,11 @@ int timeouts(void){
 	long current=current_time();
 	//Look at times
 	for (int i=0;i<queued;i++)
-		if ((current-timers[i])>TIMEOUT_MAX)
+		if ((current-timers[i])>TIMEOUT_MAX){
+			cout<<"Timeout occued"<<endl;
 			return 1;//Timeout occured
-
+		}
+	//cout<<"No timeouts"<<'\r';
 	return 0;//No timeouts
 
 }
@@ -229,11 +237,11 @@ void *time_disp(void* num){
 	//Update if times have changed
 	while(1)
 		if (old_time[0]!=timers[0] || old_time[1]!=timers[1] || old_time[2]!=timers[2] || old_time[3]!=timers[3]){
+			cout<<"Update Timers"<<endl;
 			cout<<"Timers 1:"<<timers[0]<<"Timers 2:"<<timers[0]<<"Timers 3:"<<timers[0]<<"Timers 4:"<<timers[0]<<'\r'; 
 			for (int i=0;i<4;i++)
 				old_time[i]=timers[i];//Update old times
 		}
-
 }
 
 //Get current time
