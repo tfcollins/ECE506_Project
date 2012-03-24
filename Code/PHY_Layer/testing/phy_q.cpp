@@ -54,23 +54,23 @@ int main(int argc, char *argv[]){
 	int iret1, iret2;
 	//iret1 = pthread_create( &phy_send_thread, NULL, phy_send_t, (void*) 1);
 	//iret2 = pthread_create( &phy_receive_thread, NULL, phy_receive_t, (void*) 1);
-    iret2 = pthread_create( &phy_layer_thread, NULL, phy_layer_t, (void*) 1);
+	iret2 = pthread_create( &phy_layer_thread, NULL, phy_layer_t, (void*) 1);
     
 	//Thread status info, consider moving to own thread
-	for(int i=0;i<12;i++){
+	for(int i=0;i<30;i++){
 		sleep(1);
 		cout<<"PhyS Size:"<<phy_send_q.size()<<endl;
 		cout<<"PhyR Size:"<<phy_receive_q.size()<<endl;
 
 		if (i==5){
 			pthread_mutex_lock( &mutex_phy_send );
-			phy_send_q.push("Travis");
+			phy_send_q.push("0\a0\aTravis");
 			pthread_mutex_unlock( &mutex_phy_send );
 	
 		}
-		if (i==10){
+		if (i==20){
 			pthread_mutex_lock( &mutex_phy_send );
-			phy_send_q.push("DONE");
+			phy_send_q.push("1\a0\aDONE");
 			pthread_mutex_unlock( &mutex_phy_send );
 			alive=0;	
 		}
@@ -99,7 +99,8 @@ void *phy_layer_t(void* num){
     char outbuff[256];     // Buffer to hold outgoing data
     char inbuff[256];      // Buffer to read incoming data into
     int err;	       // holds return values
-    
+    string temp;   
+ 
     memset(&outbuff,0,sizeof(outbuff)); // memset used for portability
     thefd=phy_setup(PORT,gethostbyname(HOSTNAME)); // Connect to the finger port
     if(thefd==-1) {
@@ -130,7 +131,7 @@ void *phy_layer_t(void* num){
             memset(&inbuff,0,sizeof(inbuff));
             if (read(thefd, inbuff, sizeof(inbuff)-1) <= 0) {
                 close(thefd);
-                diewithError("Socket Bug socket closed");
+                diewithError("Socket READ Bug socket closed");
                 break;
             }
             else{
@@ -143,20 +144,27 @@ void *phy_layer_t(void* num){
         
         //WRITE SOMETHING
         if (!phy_send_q.empty()){
-            cout<<"SOMETHING IN Q"<<endl;
-            
-            
+
+            cout<<"SOMETHING IN Q"<<endl;    
+
             if(FD_ISSET(thefd, &write_flags)) { //Socket ready for writing
                 FD_CLR(thefd, &write_flags);
-                cout<<"SENDING"<<endl;
-                strcpy(inbuff,"Test1");
-                write(thefd,inbuff,strlen(inbuff));
-                memset(&inbuff,0,sizeof(inbuff));
+	
+		temp.clear();
+		temp=phy_send_q.front();
+		strcpy(outbuff,temp.c_str());    
+		
+                cout<<"Sending "<<"'"<<outbuff<<"'"<<" (PHY)"<<endl;
+                write(thefd,outbuff,strlen(outbuff));
+                cout<<"Sent (PHY)"<<endl;
+                memset(&outbuff,0,sizeof(outbuff));
                 
                 pthread_mutex_lock( &mutex_phy_send );
                 phy_send_q.pop();
                 pthread_mutex_unlock( &mutex_phy_send );
             }
+	    else
+		cout<<"Socket not ready for writing"<<endl;
         }
         // now the loop repeats over again
     }
