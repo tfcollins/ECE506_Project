@@ -134,6 +134,7 @@ void *phy_layer_t(void* num){
         }
         
         //WRITE SOMETHING
+	if (!phy_send_q.empty()){
     	if(FD_ISSET(thefd, &write_flags)) { //Socket ready for writing
 		FD_CLR(thefd, &write_flags);
 		cout<<"Sending (PHY)"<<endl;
@@ -141,14 +142,15 @@ void *phy_layer_t(void* num){
 		string temp=phy_send_q.front();
 		strcpy(outbuff,temp.c_str());
 
-		write(thefd,outbuff,strlen(outbuff));
-		cout<<"Sent (PHY)"<<endl;
-		memset(&outbuff,0,sizeof(outbuff));
-		
 		//pthread_mutex_lock( &mutex_phy_send );
 		phy_send_q.pop();
 		//pthread_mutex_unlock( &mutex_phy_send );
 
+		write(thefd,outbuff,strlen(outbuff));
+		cout<<"Sent (PHY)"<<endl;		
+		memset(&outbuff,0,sizeof(outbuff));
+		
+	}
 	}
         // now the loop repeats over again
     }
