@@ -4,6 +4,7 @@
 
 //Client
 #include "all.h"
+#define DELIM " "
 #define PORTNO 8787		/* Known port number */
 
 using namespace std;
@@ -65,6 +66,10 @@ int main(int argc, char *argv[]) {
 			//Read in user input
 			cout << "Enter input: ";
 			getline(cin,buffer);
+
+			char *buffstr, *ptr;
+			strcpy(buffstr, buffer.c_str());
+			ptr = strtok(buffstr," ");
 			//Determine if possible input
 			char *buffin = &buffer[0];
 			int word = count_words(buffin);
