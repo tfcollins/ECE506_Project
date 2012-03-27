@@ -4,9 +4,11 @@
 
 //Client
 #include "all.h"
+#define DELIM " "
 #define PORTNO 8787		/* Known port number */
 
 using namespace std;
+void *recv_display(void *num);
 
 int main(int argc, char *argv[]) {
 	int sockfd, n;
@@ -45,10 +47,9 @@ int main(int argc, char *argv[]) {
 	//sockfd = phy_setup(PORTNO, server);
 
 	//TO DATA LINK LAYER
-	//dl_send(buffer);
+	//dl_send_q.push(buffer);
 
 	//Wait for login confirmation
-	//If successful, logged in
 	bool logged_in;
 	while (1) {
 		//buffer = dl_recv();
@@ -56,6 +57,13 @@ int main(int argc, char *argv[]) {
 		string received ("loggedin");
 		//received = dl_recv();
 		if (strcmp(received.c_str(), "loggedin") == 0){
+			pthread_t recv_thread;
+			int rc = pthread_create(&recv_thread, NULL, recv_display, (void *) 1);
+			if (rc){
+				cout<<"Physical Layer Thread Failed to be created"<<endl;
+				exit(1);
+			}
+
 			logged_in = true;
 			cout << "Welcome! Type 'help' for chatroom commands" << endl;
 		}
@@ -65,52 +73,38 @@ int main(int argc, char *argv[]) {
 			//Read in user input
 			cout << "Enter input: ";
 			getline(cin,buffer);
+			//cout << buffer << endl;
+
+			istringstream iss(buffer);
+			string command, input;
+			iss >> command;
+
 			//Determine if possible input
 			char *buffin = &buffer[0];
 			int word = count_words(buffin);
 
-			istringstream totalString(buffer);
-			string command, input;
-			totalString >> command >> input;
-			cout << buffer << endl;
-
-			switch(word){
-				case(1):
-					totalString >> command;
-					cout << "Sending " << command << " to server." << endl;
-					break;
-				case(2):
-					totalString >> command >> input;
-					cout << "Sending " << command << endl;// + " " << input << " to server" << endl;
-					break;
-				default:
-					cout << "Error, too many inputs!" << endl;
-					printhelp();
-					break;
+			int go=0;
+			if((command.compare("who") == 0) && (word == 1)) go = true;
+			else if ((command.compare("send") == 0) && (word >= 2)){
+				go = true;
+				iss >> input;
 			}
+			else if ((command.compare("history") == 0) && (word == 1)) go = true;
+			else if ((command.compare("what") == 0) && (word == 2)) go = true;
+			else if ((command.compare("upload") == 0) && (word == 2)) go = true;
+			else if ((command.compare("get") == 0) && (word == 2)) go = true;
+			else if ((command.compare("logout") == 0) && (word == 1)) go = true;
+			else printhelp();
 
-			if (buffer.compare("help") == 0) printhelp();
-			else if (buffer.compare("who") == 0) cout << "who";
-			else if (buffer.compare("history") == 0) cout << "history";
+			if(go){
+				cout << "Sending '" << input << "' to server." << endl;
+				//dl_send_q.push(buffer);
 
+			}
 		}
 	}
-	/*
-	//Get echo back
-	cout << "Waiting for response" << endl;
-	//Get whatever is in the queue and then a message sent from server
-	for (int j = 0; j < 2; j++) {
-		bzero(buffer, 256);
-		n = read(sockfd, buffer, 255);
-		if (n < 0) {
-			printf("ERROR reading from socket");
-			exit(0);
-		}
-		//Print received message
-		printf("Response: %s\n", buffer);
-	}
-	close(sockfd);
-	*/
+
+
 	return 0;
 }
 
@@ -149,4 +143,13 @@ int count_words(char *str){
 	}
 
 	return count;
+}
+
+void *recv_display(void *num){
+	cout << " MY NIGGA " << endl;
+	while(1){
+		sleep(3);
+		//cout << "\nSmelly" << endl;
+	}
+	return 0;
 }
