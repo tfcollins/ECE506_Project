@@ -32,8 +32,8 @@ using namespace std;
 typedef struct{
 	int type; //0 for non ACK, 1 for ACK
 	int seq_NUM;
-	int ack_NUM;
-	char data[MAX_PKT];
+//	int ack_NUM;
+	char *data;
 } frame;
 
 
@@ -43,7 +43,7 @@ int wait_for_event(void);
 static bool between(int a, int b, int c);
 void *time_disp(void* num);
 int timeouts(void);
-frame deconstruct_frame(string input);
+frame deconstruct_frame(char *input);
 long current_time();
 
 //globals
@@ -60,12 +60,14 @@ queue<string> app_send_q[20];
 queue<string> app_receive_q[20];
 queue<string> window_q[20];
 
-pthread_mutex_t mutex_phy_send = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t mutex_phy_receive = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t mutex_socket = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t mutex_app_send_q = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t mutex_app_receive_q = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t mutex_window_q = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutex_phy_send[20] = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutex_phy_receive[20] = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutex_dl_send[20] = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutex_dl_receive[20] = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutex_socket[20] = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutex_app_send_q[20] = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutex_app_receive_q[20] = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutex_window_q[20] = PTHREAD_MUTEX_INITIALIZER;
 
 int client;
 
@@ -93,101 +95,119 @@ void *dl_layer_server(void *client_num){
 		cout<<"Something bad happened with thread creation :("<<endl;
 		exit(1);
 	}*/
-	
-
+	string input;
+	char *tmp;
 	//Wait for events to happen
 	while (1) {
-		cout<<"Waiting for event (DL)"<<endl;
+		//cout<<"Waiting for event (DL)"<<endl;
 		int event=wait_for_event();
-		cout<<"Event Occurred: "<<event<<" (DL)"<<endl;
+		//cout<<"Event Occurred: "<<event<<" (DL)"<<endl;
 		switch (event) {
 
 			//If PHY Layer receives message
 			case (PHY):
-				bzero(&buffer.data,sizeof(buffer.data));
-				buffer = deconstruct_frame(phy_receive_q[client].front());
-				cout<<"Message Deconstructed"<<endl;
-				cout<<"Original: "<<phy_receive_q[client].front()<<endl;
-				cout<<"Data: "<<buffer.data<<" seq_NUM: "<<buffer.seq_NUM<<" ack_NUM: "<<buffer.ack_NUM<<" Type: "<<buffer.type<<endl; 
+				//bzero(&buffer.data,sizeof(buffer.data));
+				pthread_mutex_lock(&mutex_phy_receive[client]);
+				input = phy_receive_q[client].front();
+				pthread_mutex_unlock(&mutex_phy_receive[client]);
+
+				tmp = &input[0];
+				buffer = deconstruct_frame(tmp);
+				//cout<<"Message Deconstructed"<<endl;
+				//cout<<"Original: "<<phy_receive_q[client].front()<<endl;
+				cout<<"Data: "<<buffer.data<<" seq_NUM: "<<buffer.seq_NUM<<" Type: "<<buffer.type<<endl; 
 
 				//ACK Received
+
 				if (buffer.type){
-					cout<<"Message is an ACK (DL)"<<endl;
+					int start=frame_expected;
+					int count=0;
+					while(1){
+						if (start==buffer.seq_NUM)
+							break;
+						start=(start+1)%4;
+						count++;
+					}
+					for(int h=0;h<=count;h++){
+						pthread_mutex_lock(&mutex_window_q[client]);
+						window_q[client].pop();
+						pthread_mutex_unlock(&mutex_window_q[client]);
+
+						queued--;
+						frame_expected=((frame_expected+1)%4);
+					}
+					pthread_mutex_lock(&mutex_phy_receive[client]);
+					phy_receive_q[client].pop();
+					pthread_mutex_unlock(&mutex_phy_receive[client]);
+
+					}
+					/*cout<<"Message is an ACK (DL)"<<endl;
 					//Compare ACK seq number with older seq num in window
 					cout<<"ACK Expected: "<<frame_expected<<" ACK Recvd: "<<buffer.seq_NUM<<endl;
 					if (buffer.seq_NUM!=frame_expected){
 						cout<<"ACK Out of order, Dropping (DL)"<<endl;
+						pthread_mutex_lock(&mutex_phy_receive[client]);
 						phy_receive_q[client].pop();
+						pthread_mutex_unlock(&mutex_phy_receive[client]);
 						break;//Drop Packet
 					}
+					pthread_mutex_lock(&mutex_phy_receive[client]);
 					phy_receive_q[client].pop();
+					pthread_mutex_unlock(&mutex_phy_receive[client]);
+					
+					pthread_mutex_lock(&mutex_window_q[client]);
 					window_q[client].pop();//Remove oldest frame from saved window
+					pthread_mutex_unlock(&mutex_window_q[client]);
+
 					queued--;
-					frame_expected=(frame_expected++)%4;//Increment and wrap
-				}
+					frame_expected=((frame_expected+1)%4);//Increment and wrap
+				} */
 				else{//Data Frame Received
 		
 					//Correct order in sequence
 					cout<<"Prev Seq: "<<previous_frame_received<<" Recvd Seq: "<<buffer.seq_NUM<<endl;
-					if (buffer.seq_NUM==(previous_frame_received+1)%4){
-						previous_frame_received=(previous_frame_received++)%4;
+					if (buffer.seq_NUM==((previous_frame_received+1)%4)){
+						previous_frame_received=((previous_frame_received+1)%4);
+
+						pthread_mutex_lock(&mutex_dl_receive[client]);
 						dl_receive_q[client].push(buffer.data);
+						pthread_mutex_unlock(&mutex_dl_receive[client]);
+	
+						pthread_mutex_lock(&mutex_phy_receive[client]);
 						phy_receive_q[client].pop();
-						send_data(buffer.ack_NUM, buffer.seq_NUM, "ACK", 1);//Send ACK
+						pthread_mutex_unlock(&mutex_phy_receive[client]);
+
+						send_data(buffer.seq_NUM, 9, "ACK", 1);//Send ACK
+						cout<<"Sending ACK (DL)"<<endl;
 					}
 					else{//Drop Packet
 						cout<<"Data Frame out order (DL)"<<endl;
+						pthread_mutex_lock(&mutex_phy_receive[client]);
 						phy_receive_q[client].pop();
+						pthread_mutex_unlock(&mutex_phy_receive[client]);
 						break;
 					}
 				}
 
-
-				//Check Cumulative ACKs
-				//HOW DOES THIS WORK??????
-				
-				/*
-				//If input is expected packet
-				if (buffer.seq_NUM == frame_expected) {
-					//pthread_mutex_lock( &mutex_app_receive_q);	
-					//Add messages to app_layer_q, there will be a helper function that returns when something exists in q
-					app_receive_q.push(buffer.data);
-					//pthread_mutex_unlock( &mutex_app_receive_q);	
-					frame_expected++;
-				}
-
-				k=0;
-				while (between(ack_expected, buffer.ack_NUM, frame_to_send)) {
-					//stop timer
-					timers[k]=999999999999;//reset timer
-					k++;
-					if (queued==0)
-						queued=3;
-					else{
-						queued--;
-						window_q.pop();
-					}
-					ack_expected++;
-					//pthread_mutex_lock(&mutex_phy_receive);
-					phy_receive_q.pop();
-					//pthread_mutex_unlock(&mutex_phy_receive);
-				}
-
-				*/
 
 
 				break;
 
 			//If APP Layer wants to send message
 			case (APP):
+				pthread_mutex_lock(&mutex_dl_send[client]);
 				data = dl_send_q[client].front();
 				dl_send_q[client].pop();
+				pthread_mutex_unlock(&mutex_dl_send[client]);
+
+				pthread_mutex_lock(&mutex_window_q[client]);
 				window_q[client].push(data);//Save if needed for retransmission
+				pthread_mutex_unlock(&mutex_window_q[client]);
 				//Send buffer to physical layer
 				//Include seq number for packing
 				send_data(frame_to_send, frame_expected, data, 0);
 				frame_to_send++;
-				queued=(queued++)%4;//cycle to next q
+				queued++;//cycle to next q
 				break;
 
 			//If No ACK received, and timeout
@@ -200,13 +220,12 @@ void *dl_layer_server(void *client_num){
 				}
 				for (int i = 0; i < queued; i++){
 					
+					pthread_mutex_lock(&mutex_window_q[client]);
 					data = window_q[client].front();//Get oldest data to send first
 					//Cycle Queue, so we push just oldest message to back, it will reach the front once all windowed messages are sent
-					cout<<"Window Size: "<<window_q[client].size()<<endl;
 					window_q[client].push(window_q[client].front());
-					cout<<"Window Size: "<<window_q[client].size()<<endl;
 					window_q[client].pop();
-					cout<<"Window Size: "<<window_q[client].size()<<endl;
+					pthread_mutex_unlock(&mutex_window_q[client]);
 
 
 					//data = dl_send_q();
@@ -257,8 +276,12 @@ static void send_data(int frame_to_send, int frame_expected, string buff, int ty
 	sprintf(frame_to_send_c, "%d", frame_to_send);
 	sprintf(type_c, "%d", type);
 		
-	string tosend = string(type_c) + '\a' + frame_to_send_c + '\a' + frame_expected_c + '\a' + buff;
+	string tosend = string(type_c) + '\a' + frame_to_send_c + '\a' + buff;
+
+	pthread_mutex_lock(&mutex_phy_send[client]);
 	phy_send_q[client].push(tosend);
+	pthread_mutex_unlock(&mutex_phy_send[client]);
+
 }
 
 //Returns true if a<=b<c, else false.
@@ -311,64 +334,31 @@ long current_time(){
 
 
 //Deconstruct Frame from PHY Layer
-frame deconstruct_frame(string input){
+frame deconstruct_frame(char *input){
 
-	//CONSIDER USING p=strtok() for tokenization
-        frame buffer_temp;
-	bzero(&buffer_temp.data,200);//Clear out buffer structure
-	bzero(&buffer_temp.seq_NUM,sizeof(int));
-	bzero(&buffer_temp.ack_NUM,sizeof(int));
-        int i=0;
-        char temp[200];
-	
-        //Find  Type Num
-        for (i=0;i<input.size();i++){
-                if (input[i]=='\a'){
-                        buffer_temp.type=atoi(temp);
-                        i++;
+	char * split = strtok(input, "\a");
+	frame buffer2;
+	int t=1;
+	while (split != NULL){
+		if (t==1){
+			buffer2.type=atoi(split);
+			split=strtok(NULL,"\a");
+			}
+		else if (t==2){
+			buffer2.seq_NUM=atoi(split);
+			split=strtok(NULL,"\a");
+			}
+	/*	else if (t==3){
+			buffer2.ack_NUM=atoi(split);
+			split=strtok(NULL,"\a");
+			}*/
+		else{
+			buffer2.data=split;
 			break;
-                }
-                else
-                        temp[i]=input[i];
-        }
-
-	int p=i;
-        //Find  Sequence Num
-        while(i<input.size()){
-                if (input[i]=='\a'){
-                        buffer_temp.seq_NUM=atoi(temp);
-			i++;
-                        break;
-                }
-                else{
-                        temp[i-p]=input[i];
-			i++;
 		}
-        }
+		t++;
+	}
 
-        //Find ACK Number
-        char temp2[200];//clear
-        i++;
-        int j=i;
-        while(i<input.size()){
-                if (input[i]=='\a'){
-                        buffer_temp.ack_NUM=atoi(temp2);
-                        i++;
-                        break;
-                }
-                else{
-                        temp2[i-j]=input[i];
-                        i++;
-                }
-        }
-        //Find Message
-        j=i;
-        while(i<(input.size())){
-                buffer_temp.data[i-j]=input[i];
-                i++;
-        }
-
-      cout<<"SRQ NUM: "<<buffer_temp.seq_NUM<<endl;
-	  return buffer_temp;
+	return buffer2;
 }
 

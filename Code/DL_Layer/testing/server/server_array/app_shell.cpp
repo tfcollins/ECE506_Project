@@ -24,7 +24,7 @@ int main(int argc, char *argv[]){
 	int count=0;
 	while(1){
 		sleep(1);
-		cout<<"Doing something, I hope (APP)"<<endl;
+		//cout<<"Doing something, I hope (APP)"<<endl;
 		count++;
 		if (count==12){
 			//cout<<"Sending Message (APP)"<<endl;
@@ -32,7 +32,7 @@ int main(int argc, char *argv[]){
 			continue;
 		}
 
-		if (count==50)
+		if (count==30)
 			break;		
 	}
 

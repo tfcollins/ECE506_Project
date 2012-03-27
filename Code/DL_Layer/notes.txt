@@ -1,0 +1,17 @@
+Data Link
+
+FLOW:
+-FIRST
+SETUP SOCKET
+-WHILE
+SEND_PACKET,START TIMER->WAIT->(ACK received) SEND_NEXT_FRAME,RESET_TIMER->WAIT
+			     ->(Timeout) RESEND_PACKET->WAIT
+
+Send Data
+
+Wake up on three things, after sending frames:
+1.) ACK (From other user he got your message)
+2.) Timeout (didnt receive ACK)
+3.) Frame (Get a from from other user)
+
+

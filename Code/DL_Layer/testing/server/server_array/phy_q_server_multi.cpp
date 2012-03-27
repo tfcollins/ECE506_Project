@@ -152,9 +152,9 @@ void *phy_layer_t(void* num){
                 break;
             }
             else{
-                //pthread_mutex_lock( &mutex_phy_receive );
+                pthread_mutex_lock( &mutex_phy_receive[client] );
                 phy_receive_q[client].push(inbuff);
-                //pthread_mutex_unlock( &mutex_phy_receive );
+                pthread_mutex_unlock( &mutex_phy_receive[client] );
             }
         }
         
@@ -164,12 +164,15 @@ void *phy_layer_t(void* num){
 		FD_CLR(thefd, &write_flags);
 		cout<<"Sending (PHY)"<<endl;
 		
+		pthread_mutex_lock( &mutex_phy_send[client] );
 		string temp=phy_send_q[client].front();
+		pthread_mutex_unlock( &mutex_phy_send[client] );
+
 		strcpy(outbuff,temp.c_str());
 
-		//pthread_mutex_lock( &mutex_phy_send );
+		pthread_mutex_lock( &mutex_phy_send[client] );
 		phy_send_q[client].pop();
-		//pthread_mutex_unlock( &mutex_phy_send );
+		pthread_mutex_unlock( &mutex_phy_send[client] );
 
 		write(thefd,outbuff,strlen(outbuff));
 		cout<<"Sent (PHY)"<<endl;		

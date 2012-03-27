@@ -60,7 +60,7 @@ void *phy_layer_t(void* num){
     x=fcntl(thefd,F_GETFL,0);
     fcntl(thefd,F_SETFL,x | O_NONBLOCK);
     connected=0; 
-    cout<<"Sokcet_SETUP!!!"<<endl;
+    cout<<"Socket_SETUP!!!"<<endl;
     
     while(1) {
         FD_ZERO(&read_flags); // Zero the flags ready for using
@@ -91,9 +91,6 @@ void *phy_layer_t(void* num){
         
         //WRITE SOMETHING
         if (!phy_send_q.empty()){
-
-            cout<<"SOMETHING IN Q"<<endl;    
-
             if(FD_ISSET(thefd, &write_flags)) { //Socket ready for writing
                 FD_CLR(thefd, &write_flags);
 	

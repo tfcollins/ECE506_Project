@@ -26,14 +26,30 @@ int main(int argc, char *argv[]){
 	int count=0;
 	while(1){
 		sleep(1);
-		cout<<"Doing something, I hope (APP)"<<endl;
+		//cout<<"Doing something, I hope (APP)"<<endl;
 		count++;
-		if (count==12){
+		if (count==3){
 			cout<<"Sending Message (APP)"<<endl;
-			dl_send_q.push("Message from APP_Layer");
+			pthread_mutex_lock(&mutex_app_send);
+			dl_send_q.push("Message1");
+			dl_send_q.push("Message2");
+			dl_send_q.push("Message3");
+			pthread_mutex_unlock(&mutex_app_send);
+		}
+		if (count==5){
+			cout<<"Sending Message (APP)"<<endl;
+			pthread_mutex_lock(&mutex_app_send);
+			dl_send_q.push("Message4");
+			pthread_mutex_unlock(&mutex_app_send);
+		}
+		if (count==10){
+			cout<<"Sending Message (APP)"<<endl;
+			pthread_mutex_lock(&mutex_app_send);
+			dl_send_q.push("Message5");
+			pthread_mutex_unlock(&mutex_app_send);
 		}
 
-		if (count==50)
+		if (count==15)
 			break;		
 	}
 

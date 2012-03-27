@@ -35,9 +35,11 @@ extern queue<string> window_q;
 
 extern pthread_mutex_t mutex_phy_send;
 extern pthread_mutex_t mutex_phy_receive;
+extern pthread_mutex_t mutex_dl_send;
+extern pthread_mutex_t mutex_dl_receive;
 extern pthread_mutex_t mutex_socket;
-extern pthread_mutex_t mutex_app_send_q;
-extern pthread_mutex_t mutex_app_receive_q;
+extern pthread_mutex_t mutex_app_send;
+extern pthread_mutex_t mutex_app_receive;
 extern pthread_mutex_t mutex_window_q;
 
 extern int PORT;
