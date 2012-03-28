@@ -10,6 +10,8 @@
 using namespace std;
 void *recv_display(void *num);
 
+queue<string> dl_receive_q;
+
 int main(int argc, char *argv[]) {
 	int sockfd, n;
 	struct sockaddr_in serv_addr;
@@ -70,35 +72,61 @@ int main(int argc, char *argv[]) {
 
 		while (logged_in){
 			buffer.clear();
+
 			//Read in user input
 			cout << "Enter input: ";
 			getline(cin,buffer);
-			//cout << buffer << endl;
 
 			istringstream iss(buffer);
-			string command, input;
+			string command, input, tosend, message;
 			iss >> command;
+
+			while (iss >> input){
+				message = message + input +" ";
+			}
 
 			//Determine if possible input
 			char *buffin = &buffer[0];
 			int word = count_words(buffin);
 
+			//Verifies correct input, else prints help function
 			int go=0;
-			if((command.compare("who") == 0) && (word == 1)) go = true;
+			if((command.compare("who") == 0) && (word == 1)){
+				go = true;
+				tosend = command;
+			}
 			else if ((command.compare("send") == 0) && (word >= 2)){
 				go = true;
-				iss >> input;
+				tosend = command + " " + message;
 			}
-			else if ((command.compare("history") == 0) && (word == 1)) go = true;
-			else if ((command.compare("what") == 0) && (word == 2)) go = true;
-			else if ((command.compare("upload") == 0) && (word == 2)) go = true;
-			else if ((command.compare("get") == 0) && (word == 2)) go = true;
-			else if ((command.compare("logout") == 0) && (word == 1)) go = true;
+			else if ((command.compare("history") == 0) && (word == 1)){
+				go = true;
+				tosend = command;
+			}
+			else if ((command.compare("what") == 0) && (word == 2)){
+				go = true;
+				tosend = command + " " + message;
+			}
+			else if ((command.compare("upload") == 0) && (word == 2)){
+				go = true;
+				tosend = command + " " + message;
+			}
+			else if ((command.compare("get") == 0) && (word == 2)){
+				go = true;
+				tosend = command + " " + message;
+			}
+			else if ((command.compare("logout") == 0) && (word == 1)){
+				go = true;
+				tosend = command;
+			}
 			else printhelp();
 
+			//Sends to data link layer if input acceptable
+			//Will have to add additional sections, based on message size
 			if(go){
-				cout << "Sending '" << input << "' to server." << endl;
-				//dl_send_q.push(buffer);
+				cout << "Sending '" << tosend << "' to server." << endl;
+				tosend = tosend + '\f';
+				//dl_send_q.push(tosend);
 
 			}
 		}
@@ -145,9 +173,20 @@ int count_words(char *str){
 	return count;
 }
 
+//Additional thread that checks and displays messages to user
 void *recv_display(void *num){
-	cout << " MY NIGGA " << endl;
+	cout << "\nStarted Recv_Display thread " << endl;
 	while(1){
+		if(!app_receive_q.empty()){
+			//mutex lock
+			string smelly = dl_receive_q.front();
+			dl_receive_q.pop();
+			//mutex unlock
+
+			cout << "\nAlert received from server!" << endl;
+			cout << smelly << endl;
+			cout << "Please continue to enter input!";
+		}
 		sleep(3);
 		//cout << "\nSmelly" << endl;
 	}
