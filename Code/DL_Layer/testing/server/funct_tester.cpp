@@ -1,6 +1,6 @@
 #include "all.h"
 #include <sys/time.h>
-
+#include <bitset>
 /*
 struct timeval {
   time_t tv_sec;
@@ -76,7 +76,10 @@ frame deconstruct_frame(string input){
 
 
 
-
+void pbits(std::string const& s) { 
+    for(std::size_t i=0; i<s.size(); i++) 
+            std::cout << std::bitset<CHAR_BIT>(s[i]) << " "; 
+	    } 
 
 
 int main(){
@@ -108,21 +111,70 @@ sleep(1);
 }*/
 
 
-queue<string> phy_array[10];
+//queue<string> phy_array[10];
 
-phy_array[0].push("Test1");
+//phy_array[0].push("Test1");
 
-cout<<"Array0: "<<phy_array[0].size()<<endl;
-cout<<"Array1: "<<phy_array[1].size()<<endl;
+//cout<<"Array0: "<<phy_array[0].size()<<endl;
+//cout<<"Array1: "<<phy_array[1].size()<<endl;
 
 
-int n = 123;
+//int n = 123;
 
-char c[20];
-sprintf(c, "%d", n);
+//char c[20];
+//sprintf(c, "%d", n);
 
-cout<<c<<endl;
+//cout<<c<<endl;
 
+string input="This is a string";
+//char *input="This is a string";
+string tstr;
+
+bitset<8> mybits=0;
+bitset<8> mybits2=0;
+int checksum = 0;
+for(int i=0; i<input.size(); i++) {
+	mybits=bitset<8>(input[i]);
+	cout<<mybits<<endl;
+	tstr=mybits.to_string<char,char_traits<char>,allocator<char> >();
+	mybits2 = mybits2 ^ mybits;
+}
+cout<<"Total: "<<mybits2<<endl;
+int mybit=0;
+for (int i=0; i<8;i++){
+mybit= mybit ^ mybits2[i];
+
+}
+cout<<mybit<<endl;
+
+
+//input="This is a string";
+input[1]++;
+cout<<input<<endl;
+cout<<input[input.size()-1]<<endl;
+string input2=input;
+if (input2.size () > 0)  input2.resize (input2.size () - 1);
+cout<<input2<<endl;
+checksum = 0;
+mybits=0;
+mybits2=0;
+
+for(int i=0; i<input.size(); i++) {
+//cout << bitset<8>(input[i]) << '\n';
+	mybits=bitset<8>(input[i]);
+	cout<<mybits<<endl;
+	//cout<<(char)mybits.to_ulong()<<endl;
+	tstr=mybits.to_string<char,char_traits<char>,allocator<char> >();
+	mybits2 = mybits2 ^ mybits;
+}
+cout<<"Total: "<<mybits2<<endl;
+
+mybit=0;
+for (int i=0; i<8;i++){
+mybit= mybit ^ mybits2[i];
+
+}
+cout<<mybit<<endl;
 return 0;
 
 }

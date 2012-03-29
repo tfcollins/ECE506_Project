@@ -1,5 +1,5 @@
 #include "all.h"
-
+#include <bitset>
 
 //#define PORT 5001
 #define BUFFER_SIZE 256
@@ -14,6 +14,7 @@ void diewithError(string message) {
 //void *phy_send_t(void* num);
 //void *phy_receive_t(void* num);
 //void *phy_layer_t(void* num);
+int get_crc(string str);
 
 typedef struct{
 	int *socket;
@@ -115,7 +116,8 @@ void *phy_layer_t(void* num){
     int err;	       // holds return values
     
     memset(&outbuff,0,sizeof(outbuff)); // memset used for portability
-    
+    int crc;
+
     //Start DL Layer for this client
     pthread_t dl_thread;
     int rc;
@@ -152,7 +154,20 @@ void *phy_layer_t(void* num){
                 break;
             }
             else{
-                pthread_mutex_lock( &mutex_phy_receive[client] );
+	    	char crc_c[2];
+		crc_c[0]=inbuff[strlen(inbuff)-1];
+		crc_c[1]='\0';
+		crc=atoi(crc_c);
+		cout<<"CRC Received: "<<crc<<endl;
+		//remove crc
+		inbuff[strlen(inbuff)-1]= '\0';
+                //Check CRC
+		if(get_crc(string(inbuff))==crc)
+			cout<<"Correct CRC"<<endl;
+		else//Drop Packet
+			continue;
+
+		pthread_mutex_lock( &mutex_phy_receive[client] );
                 phy_receive_q[client].push(inbuff);
                 pthread_mutex_unlock( &mutex_phy_receive[client] );
             }
@@ -167,6 +182,13 @@ void *phy_layer_t(void* num){
 		pthread_mutex_lock( &mutex_phy_send[client] );
 		string temp=phy_send_q[client].front();
 		pthread_mutex_unlock( &mutex_phy_send[client] );
+
+		//CRC
+		crc=get_crc(temp);
+		char crc_s[5];
+		sprintf(crc_s,"%d",crc);
+		cout<<"CRC: "<<crc_s<<endl;
+		temp.append(crc_s);
 
 		strcpy(outbuff,temp.c_str());
 
@@ -187,5 +209,21 @@ void *phy_layer_t(void* num){
     
 }
 
+//Calculate checksum
+int get_crc(string str){
 
+	bitset<8> mybits=0;
+        bitset<8> mybits2=0;
 
+	for(int i=0; i<str.size(); i++) {
+	                mybits=bitset<8>(str[i]);
+			mybits2 = mybits2 ^ mybits;
+	}
+
+	//XOR Bits together for remainder
+	int mybit=0;
+	for (int i=0; i<8;i++){
+		mybit= mybit ^ mybits2[i];
+	}
+	return mybit;
+}
