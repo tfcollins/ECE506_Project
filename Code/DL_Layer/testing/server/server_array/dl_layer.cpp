@@ -38,8 +38,8 @@ typedef struct{
 
 
 //function prototypes
-static void send_data(int frame_to_send, int frame_expected, string buff, int type);
-int wait_for_event(void);
+static void send_data(int frame_to_send, int frame_expected, string buff, int type, int client);
+int wait_for_event(int client);
 static bool between(int a, int b, int c);
 void *time_disp(void* num);
 int timeouts(void);
@@ -60,30 +60,30 @@ queue<string> app_send_q[20];
 queue<string> app_receive_q[20];
 queue<string> window_q[20];
 
-pthread_mutex_t mutex_phy_send[20] = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t mutex_phy_receive[20] = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t mutex_dl_send[20] = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t mutex_dl_receive[20] = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t mutex_socket[20] = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t mutex_app_send_q[20] = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t mutex_app_receive_q[20] = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t mutex_window_q[20] = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutex_phy_send[20] = {PTHREAD_MUTEX_INITIALIZER};
+pthread_mutex_t mutex_phy_receive[20] = {PTHREAD_MUTEX_INITIALIZER};
+pthread_mutex_t mutex_dl_send[20] = {PTHREAD_MUTEX_INITIALIZER};
+pthread_mutex_t mutex_dl_receive[20] = {PTHREAD_MUTEX_INITIALIZER};
+pthread_mutex_t mutex_socket[20] = {PTHREAD_MUTEX_INITIALIZER};
+pthread_mutex_t mutex_app_send_q[20] = {PTHREAD_MUTEX_INITIALIZER};
+pthread_mutex_t mutex_app_receive_q[20] = {PTHREAD_MUTEX_INITIALIZER};
+pthread_mutex_t mutex_window_q[20] = {PTHREAD_MUTEX_INITIALIZER};
 
-int client;
+//int client;
+int previous_frame_received[20]={3};
 
 //Data Link Layer Master Thread
 void *dl_layer_server(void *client_num){
 
 	//Set User
 	int *client_temp = (int *) client_num;
-	client = *client_temp;
-	cout<<"REACHED"<<endl;
-	cout<<"DL Layer thread started for client: "<<client<<endl;
-
+	int const client = *client_temp;
+	//cout<<"DL Layer thread started for client: "<<client<<endl;
+	
+	pthread_mutex_t mutex_prev_seq_num = PTHREAD_MUTEX_INITIALIZER;
 	int frame_to_send = 0;
 	int frame_expected = 0;
 	int ack_expected = 0;
-	int previous_frame_received=3;
 	int rc;
 	frame buffer;
 
@@ -97,28 +97,33 @@ void *dl_layer_server(void *client_num){
 	}*/
 	string input;
 	char *tmp;
+	previous_frame_received[client]=3;
 	//Wait for events to happen
 	while (1) {
 		//cout<<"Waiting for event (DL)"<<endl;
-		int event=wait_for_event();
+		//cout<<"PREV:"<<previous_frame_received[client]<<endl;
+		int event=wait_for_event(client);
 		//cout<<"Event Occurred: "<<event<<" (DL)"<<endl;
+		//cout<<&event<<endl;
 		switch (event) {
 
 			//If PHY Layer receives message
 			case (PHY):
+				//cout<<"Last correct seq: "<<previous_frame_received<<endl;
 				//bzero(&buffer.data,sizeof(buffer.data));
 				pthread_mutex_lock(&mutex_phy_receive[client]);
+				//cout<<"phy_r_q Client: "<<client<<endl;
 				input = phy_receive_q[client].front();
+				//cout<<"Comp"<<endl;
 				pthread_mutex_unlock(&mutex_phy_receive[client]);
 
 				tmp = &input[0];
 				buffer = deconstruct_frame(tmp);
 				//cout<<"Message Deconstructed"<<endl;
 				//cout<<"Original: "<<phy_receive_q[client].front()<<endl;
-				cout<<"Data: "<<buffer.data<<" seq_NUM: "<<buffer.seq_NUM<<" Type: "<<buffer.type<<endl; 
+				//cout<<"Data: "<<buffer.data<<" seq_NUM: "<<buffer.seq_NUM<<" Type: "<<buffer.type<<endl; 
 
 				//ACK Received
-
 				if (buffer.type){
 					int start=frame_expected;
 					int count=0;
@@ -141,34 +146,15 @@ void *dl_layer_server(void *client_num){
 					pthread_mutex_unlock(&mutex_phy_receive[client]);
 
 					}
-					/*cout<<"Message is an ACK (DL)"<<endl;
-					//Compare ACK seq number with older seq num in window
-					cout<<"ACK Expected: "<<frame_expected<<" ACK Recvd: "<<buffer.seq_NUM<<endl;
-					if (buffer.seq_NUM!=frame_expected){
-						cout<<"ACK Out of order, Dropping (DL)"<<endl;
-						pthread_mutex_lock(&mutex_phy_receive[client]);
-						phy_receive_q[client].pop();
-						pthread_mutex_unlock(&mutex_phy_receive[client]);
-						break;//Drop Packet
-					}
-					pthread_mutex_lock(&mutex_phy_receive[client]);
-					phy_receive_q[client].pop();
-					pthread_mutex_unlock(&mutex_phy_receive[client]);
-					
-					pthread_mutex_lock(&mutex_window_q[client]);
-					window_q[client].pop();//Remove oldest frame from saved window
-					pthread_mutex_unlock(&mutex_window_q[client]);
-
-					queued--;
-					frame_expected=((frame_expected+1)%4);//Increment and wrap
-				} */
 				else{//Data Frame Received
 		
 					//Correct order in sequence
-					cout<<"Prev Seq: "<<previous_frame_received<<" Recvd Seq: "<<buffer.seq_NUM<<endl;
-					if (buffer.seq_NUM==((previous_frame_received+1)%4)){
-						previous_frame_received=((previous_frame_received+1)%4);
-
+					pthread_mutex_lock(&mutex_prev_seq_num);
+					cout<<"Prev Seq: "<<previous_frame_received[client]<<" Recvd Seq: "<<buffer.seq_NUM<<" Client: "<<client<<endl;
+					if (buffer.seq_NUM==((previous_frame_received[client]+1)%4)){
+						//cout<<"Correctly Ordered Frame"<<endl;
+						previous_frame_received[client]=((previous_frame_received[client]+1)%4);
+						
 						pthread_mutex_lock(&mutex_dl_receive[client]);
 						dl_receive_q[client].push(buffer.data);
 						pthread_mutex_unlock(&mutex_dl_receive[client]);
@@ -177,20 +163,21 @@ void *dl_layer_server(void *client_num){
 						phy_receive_q[client].pop();
 						pthread_mutex_unlock(&mutex_phy_receive[client]);
 
-						send_data(buffer.seq_NUM, 9, "ACK", 1);//Send ACK
+						send_data(buffer.seq_NUM, 9, "ACK", 1, client);//Send ACK
 						cout<<"Sending ACK (DL)"<<endl;
 					}
 					else{//Drop Packet
-						cout<<"Data Frame out order (DL)"<<endl;
+						cout<<"Data Frame out order, dropping (DL)"<<endl;
 						pthread_mutex_lock(&mutex_phy_receive[client]);
+						//cout<<"phy_r_q Client"<<client<<endl;
 						phy_receive_q[client].pop();
+						//cout<<"Comp"<<endl;
 						pthread_mutex_unlock(&mutex_phy_receive[client]);
-						break;
+						//break;//not sure if needed
 					}
+					pthread_mutex_unlock(&mutex_prev_seq_num);
+				
 				}
-
-
-
 				break;
 
 			//If APP Layer wants to send message
@@ -205,7 +192,7 @@ void *dl_layer_server(void *client_num){
 				pthread_mutex_unlock(&mutex_window_q[client]);
 				//Send buffer to physical layer
 				//Include seq number for packing
-				send_data(frame_to_send, frame_expected, data, 0);
+				send_data(frame_to_send, frame_expected, data, 0, client);
 				frame_to_send++;
 				queued++;//cycle to next q
 				break;
@@ -229,7 +216,7 @@ void *dl_layer_server(void *client_num){
 
 
 					//data = dl_send_q();
-					send_data(frame_to_send, frame_expected, data, 0);
+					send_data(frame_to_send, frame_expected, data, 0, client);
 					frame_to_send++;
 					//Reset Timer(s)
 					cout<<"Reseting Timer: "<<i<<endl;
@@ -239,34 +226,43 @@ void *dl_layer_server(void *client_num){
 				}
 				break;
 		} //switch(event)
-		cout<<"Event Completed (DL)"<<endl;//Done with that event
+		//cout<<"Event Completed (DL)"<<endl;//Done with that event
 
 		if (queued > MAX_SEQ) cout << "FUCK (DL)"<<endl;
 		//STOP putting stuff in the queue, or reset queue.
 
 	} //while(1)
+	cout<<"EXITTED WHILE(1) LOOP!!!!!!!!!!!!!! CLIENT: "<<client<<endl;
 } //main
 
 //SUPPORT FUNCTIONS//////////////////
 
 //Trigger when event occurs
-int wait_for_event(void){
+int wait_for_event(int client){
 	int event=0;
+	int client_temp;
 	while(event<1){
+	    client_temp=client;
+	    //sleep(1);
+	    //cout<<"ALIVE CLIENT: "<<client<<endl;
+	    pthread_mutex_lock( &mutex_phy_receive[client] );	
+	    pthread_mutex_lock( &mutex_dl_send[client] );
 	    if (!phy_receive_q[client].empty())
 		event=1;
 	    else if (!dl_send_q[client].empty())
 		event=2;
 	    else if (timeouts())//Need a timeout function
 		event=3;
-	    //else
-	      //  wait_for_event();
+	    pthread_mutex_unlock( &mutex_phy_receive[client] );
+	    pthread_mutex_unlock( &mutex_dl_send[client] );
+	    if(client_temp!=client)
+		cout<<"EEEERRRRRORRRRRRRRRRRRRRRRRRRRRR"<<endl;
 	}
 
 	return event;
 }
 
-static void send_data(int frame_to_send, int frame_expected, string buff, int type){
+static void send_data(int frame_to_send, int frame_expected, string buff, int type, int client){
 	
 	//Convert Integers to Characters
 	char frame_expected_c[20];
@@ -279,7 +275,9 @@ static void send_data(int frame_to_send, int frame_expected, string buff, int ty
 	string tosend = string(type_c) + '\a' + frame_to_send_c + '\a' + buff;
 
 	pthread_mutex_lock(&mutex_phy_send[client]);
+	//cout<<"phy_s_q Client: "<<client<<endl;
 	phy_send_q[client].push(tosend);
+	//cout<<"Comp"<<endl;
 	pthread_mutex_unlock(&mutex_phy_send[client]);
 
 }
@@ -348,10 +346,6 @@ frame deconstruct_frame(char *input){
 			buffer2.seq_NUM=atoi(split);
 			split=strtok(NULL,"\a");
 			}
-	/*	else if (t==3){
-			buffer2.ack_NUM=atoi(split);
-			split=strtok(NULL,"\a");
-			}*/
 		else{
 			buffer2.data=split;
 			break;

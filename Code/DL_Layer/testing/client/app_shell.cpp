@@ -28,12 +28,22 @@ int main(int argc, char *argv[]){
 		sleep(1);
 		//cout<<"Doing something, I hope (APP)"<<endl;
 		count++;
-		if (count==3){
+		if (count==30){
 			cout<<"Sending Message (APP)"<<endl;
 			pthread_mutex_lock(&mutex_app_send);
 			dl_send_q.push("Message1");
+			pthread_mutex_unlock(&mutex_app_send);
+			//sleep(1);
+			pthread_mutex_lock(&mutex_app_send);
 			dl_send_q.push("Message2");
+			pthread_mutex_unlock(&mutex_app_send);
+			//sleep(1);
+			pthread_mutex_lock(&mutex_app_send);
 			dl_send_q.push("Message3");
+			pthread_mutex_unlock(&mutex_app_send);
+			//sleep(1);
+			pthread_mutex_lock(&mutex_app_send);
+			dl_send_q.push("Message4");
 			pthread_mutex_unlock(&mutex_app_send);
 		}
 		if (count==5){
@@ -42,14 +52,14 @@ int main(int argc, char *argv[]){
 			dl_send_q.push("Message4");
 			pthread_mutex_unlock(&mutex_app_send);
 		}
-		if (count==10){
+		if (count==20){
 			cout<<"Sending Message (APP)"<<endl;
 			pthread_mutex_lock(&mutex_app_send);
 			dl_send_q.push("Message5");
 			pthread_mutex_unlock(&mutex_app_send);
 		}
 
-		if (count==15)
+		if (count==150)
 			break;		
 	}
 

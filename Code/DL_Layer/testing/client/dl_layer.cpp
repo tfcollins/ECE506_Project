@@ -23,7 +23,7 @@ using namespace std;
 //Window Size
 #define MAX_SEQ 4
 #define MAX_PKT 200
-#define TIMEOUT_MAX 9000000 //fix later, 1 sec = 1000000
+#define TIMEOUT_MAX 90000000 //fix later, 1 sec = 1000000
 
 #define PHY 1
 #define APP 2
@@ -103,14 +103,14 @@ void *dl_layer_client(void *num){
 	while (1) {
 		//cout<<"Waiting for event (DL)"<<endl;
 		int event=wait_for_event();
-		cout<<"Event Occurred: "<<event<<" (DL)"<<endl;
+		//cout<<"Event Occurred: "<<event<<" (DL)"<<endl;
 		switch (event) {
 
 			//If PHY Layer receives message
 			case (PHY):
 				//bzero(&buffer.data,sizeof(buffer.data));
 				buffer = deconstruct_frame(phy_receive_q.front());
-				cout<<"Data: "<<buffer.data<<" seq_NUM: "<<buffer.seq_NUM<<" Type: "<<buffer.type<<endl; 
+				//cout<<"Data: "<<buffer.data<<" seq_NUM: "<<buffer.seq_NUM<<" Type: "<<buffer.type<<endl; 
 
 				//ACK Received
 				if (buffer.type){
@@ -124,6 +124,8 @@ void *dl_layer_client(void *num){
 						start=(start+1)%4;
 						count++;		
 					}
+					if(count>0)
+						cout<<"Readjusting Known ACKS"<<endl;
 					for(int h=0;h<=count;h++){
 						pthread_mutex_lock(&mutex_window_q);
 						window_q.pop();
@@ -163,7 +165,7 @@ void *dl_layer_client(void *num){
 						send_data(buffer.seq_NUM, 9, "ACK", 1);//Send ACK
 					}
 					else{//Drop Packet
-						cout<<"Data Frame out order (DL)"<<endl;
+						cout<<"Data Frame out order, dropping (DL)"<<endl;
 						pthread_mutex_lock(&mutex_phy_receive);
 						phy_receive_q.pop();
 						pthread_mutex_unlock(&mutex_phy_receive);

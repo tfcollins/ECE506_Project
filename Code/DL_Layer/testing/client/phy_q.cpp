@@ -63,11 +63,14 @@ void *phy_layer_t(void* num){
     connected=0; 
     cout<<"Socket_SETUP!!!"<<endl;
     int crc;
+    int total=0;
 
     while(1) {
+	sleep(1);
         FD_ZERO(&read_flags); // Zero the flags ready for using
         FD_ZERO(&write_flags);
         FD_SET(thefd, &read_flags);
+
         if(!phy_send_q.empty()) FD_SET(thefd, &write_flags);
         err=select(thefd+1, &read_flags,&write_flags,
                    (fd_set*)0,&waitd);
@@ -91,8 +94,10 @@ void *phy_layer_t(void* num){
 		//remove crc
 		inbuff[strlen(inbuff)-1]= '\0';
 		//check crc
-		if(get_crc(string(inbuff))==crc)
-			cout<<"Correct CRC"<<endl;
+		if(get_crc(string(inbuff))==crc){
+			//cout<<"Correct CRC"<<endl;
+			
+		}
 		else{//Drop Packet
 			cout<<"CRC Check FAILLED (PHY)"<<endl;
 			continue;
@@ -105,10 +110,10 @@ void *phy_layer_t(void* num){
         }
         
         //WRITE SOMETHING
-        if (!phy_send_q.empty()){
+        //if (!phy_send_q.empty()){
             if(FD_ISSET(thefd, &write_flags)) { //Socket ready for writing
+		cout<<"Q Size: "<<phy_send_q.size()<<endl;
                 FD_CLR(thefd, &write_flags);
-	
 		temp.clear();
 		pthread_mutex_lock( &mutex_phy_send);
 		temp=phy_send_q.front();
@@ -117,24 +122,24 @@ void *phy_layer_t(void* num){
 		crc=get_crc(temp);
 		char crc_s[5];
 		sprintf(crc_s,"%d",crc);
-		cout<<"CRC: "<<crc_s<<endl;
+		//cout<<"CRC: "<<crc_s<<endl;
 		temp.append(crc_s);
 		strcpy(outbuff,temp.c_str());    
 		
 		cout<<"Sending "<<"'"<<outbuff<<"'"<<" (PHY)"<<endl;
                 write(thefd,outbuff,strlen(outbuff));
-                cout<<"Sent (PHY)"<<endl;
                 memset(&outbuff,0,sizeof(outbuff));
                 
                 pthread_mutex_lock( &mutex_phy_send );
                 phy_send_q.pop();
-                pthread_mutex_unlock( &mutex_phy_send );
+		pthread_mutex_unlock( &mutex_phy_send );
             }
-	    else
-		cout<<"Socket not ready for writing"<<endl;
-        }
+	    else{
+		//cout<<"Socket not ready for writing"<<endl;
+		} 
+       }
         // now the loop repeats over again
-    }
+   // }
     
     
 }

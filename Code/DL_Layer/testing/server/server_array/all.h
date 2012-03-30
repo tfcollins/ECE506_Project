@@ -41,6 +41,8 @@ extern pthread_mutex_t mutex_app_receive_q[20];
 extern pthread_mutex_t mutex_window_q[20];
 
 extern int PORT;
+extern int previous_frame_received[20];
+extern pthread_t dl_thread[20];
 
 //Function prototypes
 void diewithError(string message);

@@ -1,5 +1,6 @@
 #include "all.h"
 #include <bitset>
+#include <sys/signal.h>
 
 //#define PORT 5001
 #define BUFFER_SIZE 256
@@ -21,7 +22,7 @@ typedef struct{
 	int client;
 } info;
 
-
+pthread_t dl_thread[20]; 
 
 
 void *phy_layer_server(void *num){
@@ -50,7 +51,7 @@ void *phy_layer_server(void *num){
 	//Threads
 	int *socket[10];
 	pthread_t phy_layer_thread[10];
-	info client_info;
+	info client_info[20];
 	int client=0;
 	int rc;
 
@@ -69,11 +70,13 @@ void *phy_layer_server(void *num){
 			if(*socket[client]==-1) diewithError("Could not connect to client");
 			cout<<"Socket Made non-blocking (PHY)"<<endl;
 			
-			client_info.socket=socket[client];
-			client_info.client=client;
+			client_info[client].socket=socket[client];
+			client_info[client].client=client;
 			//Spawn Thread
-			rc = pthread_create( &phy_layer_thread[client], NULL, phy_layer_t, &client_info);
+			cout<<&phy_layer_thread[client]<<endl;
+			rc = pthread_create( &phy_layer_thread[client], NULL, phy_layer_t, &client_info[client]);
 			if(rc)diewithError("ERROR; return code from pthread_create()");
+			pthread_detach(phy_layer_thread[client]);
 			cout<<"Thread spawned for client (PHY)"<<endl;
 			client++;
 
@@ -117,11 +120,12 @@ void *phy_layer_t(void* num){
     
     memset(&outbuff,0,sizeof(outbuff)); // memset used for portability
     int crc;
+    int total=0;
 
     //Start DL Layer for this client
-    pthread_t dl_thread;
+    //pthread_t dl_thread;
     int rc;
-    rc = pthread_create(&dl_thread, NULL, dl_layer_server, &client);
+    rc = pthread_create(&dl_thread[client], NULL, dl_layer_server, &client);
     if (rc){
     		cout<<"Data Link Layer Thread Failed to be created"<<endl;
 		exit(1);
@@ -129,44 +133,58 @@ void *phy_layer_t(void* num){
 
     //Wait to send or receive messages
     while(1) {
+
+	if(pthread_kill(dl_thread[client], 0))
+		cout<<"DL Thread died for client: "<<client<<endl;		
+
         FD_ZERO(&read_flags); // Zero the flags ready for using
         FD_ZERO(&write_flags);
         FD_SET(thefd, &read_flags);
 
     	memset(&outbuff,0,256); // memset used for portability
     	memset(&inbuff,0,256); // memset used for portability
-
         
+	//if(phy_receive_q[client].size()>1)
+	//	cout<<"Queue size: "<<phy_receive_q[client].size()<<" Client: "<<client<<endl;
+
 	//Something wants to be sent
+	pthread_mutex_lock( &mutex_phy_send[client] );
 	if(!phy_send_q[client].empty()) FD_SET(thefd, &write_flags);
+	pthread_mutex_unlock( &mutex_phy_send[client] );
 
         err=select(thefd+1, &read_flags,&write_flags,(fd_set*)0,&waitd);
 	if(err < 0) continue;//ERROR try next time around
         
         //READ SOMETHING
         if(FD_ISSET(thefd, &read_flags)) { //Socket ready for reading
+	    cout<<"Messaged Received"<<endl;
             FD_CLR(thefd, &read_flags);
             memset(&inbuff,0,sizeof(inbuff));
-            cout<<"trying to read (PHY)"<<endl;
             if (read(thefd, inbuff, sizeof(inbuff)-1) <= 0) {
                 close(thefd);
                 cout<<"Socket Closed"<<endl;
                 break;
             }
             else{
+		total++;
+		//cout<<"Messages Received: "<<total<<endl;
 	    	char crc_c[2];
 		crc_c[0]=inbuff[strlen(inbuff)-1];
 		crc_c[1]='\0';
 		crc=atoi(crc_c);
-		cout<<"CRC Received: "<<crc<<endl;
+		//cout<<"CRC Received: "<<crc<<endl;
 		//remove crc
 		inbuff[strlen(inbuff)-1]= '\0';
+		cout<<"Received: "<<inbuff<<endl;
                 //Check CRC
-		if(get_crc(string(inbuff))==crc)
-			cout<<"Correct CRC"<<endl;
-		else//Drop Packet
+		if(get_crc(string(inbuff))==crc){
+			
+			//cout<<"Correct CRC"<<endl;
+		}
+		else{//Drop Packet
+			cout<<"CRC Checksum Failed"<<endl;
 			continue;
-
+		}
 		pthread_mutex_lock( &mutex_phy_receive[client] );
                 phy_receive_q[client].push(inbuff);
                 pthread_mutex_unlock( &mutex_phy_receive[client] );
@@ -174,34 +192,39 @@ void *phy_layer_t(void* num){
         }
         
         //WRITE SOMETHING
-	if (!phy_send_q[client].empty()){
+	//if (!phy_send_q[client].empty()){
     	if(FD_ISSET(thefd, &write_flags)) { //Socket ready for writing
 		FD_CLR(thefd, &write_flags);
-		cout<<"Sending (PHY)"<<endl;
+	//	cout<<"Sending (PHY) C: "<<client<<endl;
 		
 		pthread_mutex_lock( &mutex_phy_send[client] );
+		//cout<<"phy_s_q_Client: "<<client<<endl;
 		string temp=phy_send_q[client].front();
+		//cout<<"Comp "<<client<<endl;
 		pthread_mutex_unlock( &mutex_phy_send[client] );
 
 		//CRC
 		crc=get_crc(temp);
 		char crc_s[5];
 		sprintf(crc_s,"%d",crc);
-		cout<<"CRC: "<<crc_s<<endl;
+		//cout<<"CRC: "<<crc_s<<endl;
 		temp.append(crc_s);
 
 		strcpy(outbuff,temp.c_str());
 
 		pthread_mutex_lock( &mutex_phy_send[client] );
+		//cout<<"phy_s_q_Client: "<<client<<endl;
 		phy_send_q[client].pop();
+		//cout<<"Comp "<<client<<endl;
 		pthread_mutex_unlock( &mutex_phy_send[client] );
 
+		//cout<<"SENDING: "<<outbuff<<endl;
 		write(thefd,outbuff,strlen(outbuff));
-		cout<<"Sent (PHY)"<<endl;		
+		//cout<<"Sent (PHY)"<<endl;		
 		memset(&outbuff,0,sizeof(outbuff));
 		
 	}
-	}
+	//}
         // now the loop repeats over again
     }
 
