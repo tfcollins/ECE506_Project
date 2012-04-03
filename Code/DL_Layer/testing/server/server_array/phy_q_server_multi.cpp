@@ -157,7 +157,7 @@ void *phy_layer_t(void* num){
         
         //READ SOMETHING
         if(FD_ISSET(thefd, &read_flags)) { //Socket ready for reading
-	    cout<<"Messaged Received"<<endl;
+	    //cout<<"Messaged Received"<<endl;
             FD_CLR(thefd, &read_flags);
             memset(&inbuff,0,sizeof(inbuff));
             if (read(thefd, inbuff, sizeof(inbuff)-1) <= 0) {
@@ -166,28 +166,43 @@ void *phy_layer_t(void* num){
                 break;
             }
             else{
-		total++;
-		//cout<<"Messages Received: "<<total<<endl;
-	    	char crc_c[2];
-		crc_c[0]=inbuff[strlen(inbuff)-1];
-		crc_c[1]='\0';
-		crc=atoi(crc_c);
-		//cout<<"CRC Received: "<<crc<<endl;
-		//remove crc
-		inbuff[strlen(inbuff)-1]= '\0';
-		cout<<"Received: "<<inbuff<<endl;
-                //Check CRC
-		if(get_crc(string(inbuff))==crc){
-			
-			//cout<<"Correct CRC"<<endl;
-		}
-		else{//Drop Packet
-			cout<<"CRC Checksum Failed"<<endl;
-			continue;
-		}
-		pthread_mutex_lock( &mutex_phy_receive[client] );
-                phy_receive_q[client].push(inbuff);
-                pthread_mutex_unlock( &mutex_phy_receive[client] );
+		//string str=string(inbuff);
+		cout<<"FULL MESSAGE: "<<inbuff<<"|"<<endl;    
+		//count messages
+		int messages=0;
+		int saved=0;
+		string temp_str;
+		for (int p=0;p<strlen(inbuff);p++){
+			if (inbuff[p]=='\t'){
+				cout<<temp_str<<endl;
+				char *pch;
+				pch = new char [temp_str.size()+1];
+				strcpy(pch,temp_str.c_str());
+				char crc_c[2];
+				crc_c[0]=pch[strlen(pch)-1];
+				crc_c[1]='\0';
+				crc=atoi(crc_c);
+				//remove crc
+				pch[strlen(pch)-1]= '\0';	
+				cout<<"Received: "<<pch<<endl;
+				//Check CRC
+				if(get_crc(string(pch))==crc){				
+				//cout<<"Correct CRC"<<endl;
+				}	
+				else{//Drop Packet
+					cout<<"CRC Checksum Failed"<<endl;
+					continue;
+				}
+				pthread_mutex_lock( &mutex_phy_receive[client] );
+				phy_receive_q[client].push(pch);
+				pthread_mutex_unlock( &mutex_phy_receive[client] );
+				temp_str.clear();
+			}
+			else
+				temp_str=temp_str+inbuff[p];
+			}
+
+		
             }
         }
         
@@ -198,29 +213,23 @@ void *phy_layer_t(void* num){
 	//	cout<<"Sending (PHY) C: "<<client<<endl;
 		
 		pthread_mutex_lock( &mutex_phy_send[client] );
-		//cout<<"phy_s_q_Client: "<<client<<endl;
 		string temp=phy_send_q[client].front();
-		//cout<<"Comp "<<client<<endl;
 		pthread_mutex_unlock( &mutex_phy_send[client] );
 
 		//CRC
 		crc=get_crc(temp);
 		char crc_s[5];
 		sprintf(crc_s,"%d",crc);
-		//cout<<"CRC: "<<crc_s<<endl;
 		temp.append(crc_s);
+		temp.append("\t");
 
 		strcpy(outbuff,temp.c_str());
 
 		pthread_mutex_lock( &mutex_phy_send[client] );
-		//cout<<"phy_s_q_Client: "<<client<<endl;
 		phy_send_q[client].pop();
-		//cout<<"Comp "<<client<<endl;
 		pthread_mutex_unlock( &mutex_phy_send[client] );
 
-		//cout<<"SENDING: "<<outbuff<<endl;
 		write(thefd,outbuff,strlen(outbuff));
-		//cout<<"Sent (PHY)"<<endl;		
 		memset(&outbuff,0,sizeof(outbuff));
 		
 	}

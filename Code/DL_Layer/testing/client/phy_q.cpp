@@ -66,7 +66,7 @@ void *phy_layer_t(void* num){
     int total=0;
 
     while(1) {
-	sleep(1);
+	//sleep(1);
         FD_ZERO(&read_flags); // Zero the flags ready for using
         FD_ZERO(&write_flags);
         FD_SET(thefd, &read_flags);
@@ -87,32 +87,46 @@ void *phy_layer_t(void* num){
                 break;
             }
             else{
-		char crc_c[2];
-		crc_c[0]=inbuff[strlen(inbuff)-1];
-		crc_c[1]='\0';
-		crc=atoi(crc_c);
-		//remove crc
-		inbuff[strlen(inbuff)-1]= '\0';
-		//check crc
-		if(get_crc(string(inbuff))==crc){
-			//cout<<"Correct CRC"<<endl;
-			
+		cout<<"FULL MESSAGE: "<<inbuff<<"|"<<endl;	
+		string temp_str;
+		for (int p=0;p<strlen(inbuff);p++){
+			if (inbuff[p]=='\t'){
+				char * pch;
+				pch = new char [temp_str.size()+1];
+				strcpy(pch,temp_str.c_str());
+				char crc_c[2];
+				crc_c[0]=inbuff[strlen(inbuff)-1];
+				crc_c[1]='\0';
+				crc=atoi(crc_c);
+				//remove crc
+				pch[strlen(pch)-1]= '\0';
+				//check crc
+				if(get_crc(string(pch))==crc){
+					//cout<<"Correct CRC"<<endl;
+					
+				}
+				else{//Drop Packet
+					cout<<"CRC Check FAILLED (PHY)"<<endl;
+					cout<<"Corrupted Message: "<<pch<<"|"<<endl;
+					pch = strtok(NULL, "\t");
+					continue;
+				}
+				printf("Received %s|\n",pch);
+				pthread_mutex_lock( &mutex_phy_receive );
+				phy_receive_q.push(pch);
+				pthread_mutex_unlock( &mutex_phy_receive );
+				temp_str.clear();
+			}
+			else
+				temp_str=temp_str+inbuff[p];
 		}
-		else{//Drop Packet
-			cout<<"CRC Check FAILLED (PHY)"<<endl;
-			continue;
-		}
-                printf("Received %s\n",inbuff);
-                pthread_mutex_lock( &mutex_phy_receive );
-                phy_receive_q.push(inbuff);
-                pthread_mutex_unlock( &mutex_phy_receive );
             }
         }
         
         //WRITE SOMETHING
         //if (!phy_send_q.empty()){
             if(FD_ISSET(thefd, &write_flags)) { //Socket ready for writing
-		cout<<"Q Size: "<<phy_send_q.size()<<endl;
+		//cout<<"Q Size: "<<phy_send_q.size()<<endl;
                 FD_CLR(thefd, &write_flags);
 		temp.clear();
 		pthread_mutex_lock( &mutex_phy_send);
@@ -124,6 +138,8 @@ void *phy_layer_t(void* num){
 		sprintf(crc_s,"%d",crc);
 		//cout<<"CRC: "<<crc_s<<endl;
 		temp.append(crc_s);
+		temp.append("\t");
+
 		strcpy(outbuff,temp.c_str());    
 		
 		cout<<"Sending "<<"'"<<outbuff<<"'"<<" (PHY)"<<endl;

@@ -150,7 +150,8 @@ void *dl_layer_server(void *client_num){
 		
 					//Correct order in sequence
 					pthread_mutex_lock(&mutex_prev_seq_num);
-					cout<<"Prev Seq: "<<previous_frame_received[client]<<" Recvd Seq: "<<buffer.seq_NUM<<" Client: "<<client<<endl;
+					cout<<"Message: "<<buffer.data<<"|"<<endl;
+					//cout<<"Prev Seq: "<<previous_frame_received[client]<<" Recvd Seq: "<<buffer.seq_NUM<<" Client: "<<client<<endl;
 					if (buffer.seq_NUM==((previous_frame_received[client]+1)%4)){
 						//cout<<"Correctly Ordered Frame"<<endl;
 						previous_frame_received[client]=((previous_frame_received[client]+1)%4);
@@ -164,7 +165,7 @@ void *dl_layer_server(void *client_num){
 						pthread_mutex_unlock(&mutex_phy_receive[client]);
 
 						send_data(buffer.seq_NUM, 9, "ACK", 1, client);//Send ACK
-						cout<<"Sending ACK (DL)"<<endl;
+						//cout<<"Sending ACK (DL)"<<endl;
 					}
 					else{//Drop Packet
 						cout<<"Data Frame out order, dropping (DL)"<<endl;

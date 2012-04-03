@@ -23,7 +23,7 @@ using namespace std;
 //Window Size
 #define MAX_SEQ 4
 #define MAX_PKT 200
-#define TIMEOUT_MAX 90000000 //fix later, 1 sec = 1000000
+#define TIMEOUT_MAX 10000000 //fix later, 1 sec = 1000000
 
 #define PHY 1
 #define APP 2
@@ -47,7 +47,7 @@ frame deconstruct_frame(string input);
 long current_time();
 
 //globals
-long timers[4]={0};
+long timers[5]={0};
 int queued = 0;
 int k;
 string data;
@@ -76,6 +76,7 @@ void *dl_layer_client(void *num){
 	int ack_expected = 0;
 	int previous_frame_received=3;
 	int rc;
+	int old_queued=0;
 	frame buffer;
 
 	//Initalize Physical Layer
@@ -116,7 +117,7 @@ void *dl_layer_client(void *num){
 				if (buffer.type){
 					//Compare ACK seq number with older seq num in window
 					//cout<<"ACK Expected: "<<frame_expected<<" ACK Recvd: "<<buffer.seq_NUM<<endl;
-					int start=frame_expected;
+					int start=ack_expected;
 					int count=0;
 					while(1){
 						if(start==buffer.seq_NUM)
@@ -130,9 +131,10 @@ void *dl_layer_client(void *num){
 						pthread_mutex_lock(&mutex_window_q);
 						window_q.pop();
 						pthread_mutex_unlock(&mutex_window_q);
-
+						if (queued==0)
+							cout<<"Queue Error (DL)"<<endl;
 						queued--;
-						frame_expected=(frame_expected+1)%4;
+						ack_expected=(ack_expected+1)%4;
 					}
 					pthread_mutex_lock(&mutex_phy_receive);
 					phy_receive_q.pop();
@@ -178,6 +180,13 @@ void *dl_layer_client(void *num){
 
 			//If APP Layer wants to send message
 			case (APP):
+				if (queued >= MAX_SEQ){
+					if (old_queued!=queued){
+						cout<<"Queue Maxed, must wait for ACK, queued:"<<queued<<endl;
+						old_queued=queued;
+					}
+					break;
+				}
 				pthread_mutex_lock(&mutex_dl_send);
 				data = dl_send_q.front();
 				dl_send_q.pop();
@@ -195,9 +204,10 @@ void *dl_layer_client(void *num){
 				frame_to_send=((frame_to_send+1)%4);
 				break;
 
-			//If No ACK received, and timeout
+			//If No ACK received, timeout, and resend
 			case (TIME_OUT):
-				frame_to_send = ack_expected;
+				//frame_to_send = ack_expected;
+				//int frame_index=frame_to_send;
 				//Reset N Frames
 				if (queued==0){
 					cout<<"Timeout incorrect Queue Size"<<endl;
@@ -214,8 +224,9 @@ void *dl_layer_client(void *num){
 
 
 					//data = dl_send_q();
-					send_data(frame_to_send, frame_expected, data, 0);
-					frame_to_send=((frame_to_send+1)%4);
+					send_data((ack_expected+i)%4, frame_expected, data, 0);
+
+					//frame_to_send=((frame_to_send+1)%4);
 					//Reset Timer(s)
 					cout<<"Reseting Timer: "<<i<<endl;
 					cout<<"Timer: "<<timers[i]<<" Current: "<<current_time()<<" Diff: "<<(current_time()-timers[i])<<endl;
@@ -226,7 +237,6 @@ void *dl_layer_client(void *num){
 		} //switch(event)
 		//cout<<"Event Completed (DL)"<<endl;//Done with that event
 
-		if (queued > MAX_SEQ) cout << "FUCK (DL)"<<endl;
 		//STOP putting stuff in the queue, or reset queue.
 
 	} //while(1)
@@ -240,8 +250,11 @@ int wait_for_event(void){
 	while(event<1){
 	    if (!phy_receive_q.empty())
 		event=1;
-	    else if (!dl_send_q.empty())
+	    else if (!dl_send_q.empty()){
 		event=2;
+	//	if(queued>=4)
+	//		continue;
+	   }
 	    else if (timeouts())//Need a timeout function
 		event=3;
 	    //else
@@ -285,7 +298,7 @@ int timeouts(void){
 	//Look at times
 	for (int i=0;i<queued;i++)
 		if ((current-timers[i])>TIMEOUT_MAX){
-			cout<<"Timeout occured (DL)"<<endl;
+			cout<<"Timeout occured (DL), timer: "<<i<<endl;
 			return 1;//Timeout occured
 		}
 	//cout<<"No timeouts"<<'\r';

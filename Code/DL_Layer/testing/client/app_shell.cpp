@@ -45,21 +45,30 @@ int main(int argc, char *argv[]){
 			pthread_mutex_lock(&mutex_app_send);
 			dl_send_q.push("Message4");
 			pthread_mutex_unlock(&mutex_app_send);
+			//sleep(1);
+			pthread_mutex_lock(&mutex_app_send);
+			dl_send_q.push("Message5");
+			pthread_mutex_unlock(&mutex_app_send);
+			//sleep(1);
+			pthread_mutex_lock(&mutex_app_send);
+			dl_send_q.push("Message6");
+			pthread_mutex_unlock(&mutex_app_send);
+			
 		}
 		if (count==5){
 			cout<<"Sending Message (APP)"<<endl;
 			pthread_mutex_lock(&mutex_app_send);
-			dl_send_q.push("Message4");
+			dl_send_q.push("Message00");
 			pthread_mutex_unlock(&mutex_app_send);
 		}
 		if (count==20){
 			cout<<"Sending Message (APP)"<<endl;
 			pthread_mutex_lock(&mutex_app_send);
-			dl_send_q.push("Message5");
+			dl_send_q.push("Message01");
 			pthread_mutex_unlock(&mutex_app_send);
 		}
 
-		if (count==150)
+		if (count==40)
 			break;		
 	}
 
