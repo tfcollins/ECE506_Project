@@ -161,7 +161,7 @@ mybits2=0;
 
 for(int i=0; i<input.size(); i++) {
 //cout << bitset<8>(input[i]) << '\n';
-	mybits=bitset<8>(input[i]);
+	mybits=bitset<2>(input[i]);
 	cout<<mybits<<endl;
 	//cout<<(char)mybits.to_ulong()<<endl;
 	tstr=mybits.to_string<char,char_traits<char>,allocator<char> >();
@@ -170,7 +170,7 @@ for(int i=0; i<input.size(); i++) {
 cout<<"Total: "<<mybits2<<endl;
 
 mybit=0;
-for (int i=0; i<8;i++){
+for (int i=0; i<2;i++){
 mybit= mybit ^ mybits2[i];
 
 }

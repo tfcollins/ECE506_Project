@@ -94,8 +94,9 @@ void *phy_layer_t(void* num){
 				char * pch;
 				pch = new char [temp_str.size()+1];
 				strcpy(pch,temp_str.c_str());
+				cout<<"Examining: "<<pch<<"|"<<endl;
 				char crc_c[2];
-				crc_c[0]=inbuff[strlen(inbuff)-1];
+				crc_c[0]=pch[strlen(pch)-1];
 				crc_c[1]='\0';
 				crc=atoi(crc_c);
 				//remove crc
@@ -107,6 +108,7 @@ void *phy_layer_t(void* num){
 				}
 				else{//Drop Packet
 					cout<<"CRC Check FAILLED (PHY)"<<endl;
+					cout<<"Recv CRC: "<<crc<<" Calc CRC: "<<get_crc(string(pch))<<endl;
 					cout<<"Corrupted Message: "<<pch<<"|"<<endl;
 					pch = strtok(NULL, "\t");
 					continue;
@@ -164,7 +166,7 @@ void *phy_layer_t(void* num){
 //Calculate Checksum value
 int get_crc(string str){
 
-	bitset<8> mybits=0;
+/*	bitset<8> mybits=0;
 	bitset<8> mybits2=0;
 
 	for(int i=0; i<str.size(); i++) {
@@ -180,4 +182,27 @@ int get_crc(string str){
 		mybit= mybit ^ mybits2[i];
 	}
 	return mybit;
+*/
+
+	bitset<8> mybits=0;
+        bitset<8> crc=0;
+
+
+        for (int i=0;i<str.size();i++){
+
+                mybits=bitset<8>(str[i]);
+                for(int j=0;j<8;j++){
+                        crc= crc[0] ^ mybits[j];
+                        //cout<<crc<<endl;
+
+                }
+
+        }
+
+        int g=(int) crc[0];
+
+	return g;
 }
+
+
+
