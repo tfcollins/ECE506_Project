@@ -244,7 +244,7 @@ void *phy_layer_t(void* num){
 //Calculate checksum
 int get_crc(string str){
 
-	bitset<8> mybits=0;
+/*	bitset<8> mybits=0;
         bitset<8> mybits2=0;
 
 	for(int i=0; i<str.size(); i++) {
@@ -258,4 +258,28 @@ int get_crc(string str){
 		mybit= mybit ^ mybits2[i];
 	}
 	return mybit;
+*/
+
+	bitset<8> mybits=0;
+        bitset<8> crc=0;
+	cout<<"MESSAGE SIZE= "<<str.size()<<endl;
+        for (int i=0;i<str.size();i++){
+
+                mybits=bitset<8>(str[i]);
+                for(int j=0;j<8;j++){
+                        crc= crc[0] ^ mybits[j];
+                        //cout<<crc<<endl;
+
+                }
+
+        }
+
+        int g=(int) crc[0];
+
+	return g;
+
 }
+
+
+
+
