@@ -1,3 +1,12 @@
-Hello Travis, I am editing it. 
+To do:
 
-yay gittttt.
+APP Layer:
+
+DL Layer:
+-Create debug messaging mode
+-Test more multi-client stuff
+-Clean up comments/code
+
+PHY Layer:
+-Create debug messaging mode
+-Clean up comments/code
