@@ -7,7 +7,6 @@
 #define PORT 8787		/* Known port number */
 
 using namespace std;
-int client_CNT;
 
 int main(int argc, char *argv[]){
 
@@ -26,17 +25,21 @@ int main(int argc, char *argv[]){
         exit(1);
     }
 
-    //Assume initial client count is 0
-    client_CNT = 0;
+	//DO something
+	int count=0;
+	while(1){
+		sleep(1);
+		cout<<"Doing something, I hope (APP)"<<endl;
+		count++;
+		if (count==12){
+			cout<<"Sending Message (APP)"<<endl;
+			dl_send_q.push("Message from APP_Layer");
+		}
 
-    while(1){
-    	for(int ID = 0; ID <= client_CNT; ID++){
-    		if(!dl_receive_q[ID].empty()){
-    			handle_client(ID);
-    			client_CNT++;
-    		}
-    	}
+		if (count==50)
+			break;
+	}
 
-    }
-
+	pthread_cancel(dl_thread);
+	return 0;
 }
