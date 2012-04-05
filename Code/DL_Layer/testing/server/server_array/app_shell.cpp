@@ -32,7 +32,7 @@ int main(int argc, char *argv[]){
 			continue;
 		}
 
-		if (count==40)
+		if (count==45)
 			break;		
 	}
 

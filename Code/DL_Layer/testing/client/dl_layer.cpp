@@ -17,12 +17,14 @@
 
 #include "all.h"
 #include <sys/time.h>
+#include <cmath>
 
 using namespace std;
 
 //Window Size
 #define MAX_SEQ 4
 #define MAX_PKT 200
+#define BUFFER_SIZE 128
 #define TIMEOUT_MAX 10000000 //fix later, 1 sec = 1000000
 
 #define PHY 1
@@ -45,6 +47,7 @@ void *time_disp(void* num);
 int timeouts(void);
 frame deconstruct_frame(string input);
 long current_time();
+int message_cutter();
 
 //globals
 long timers[5]={0};
@@ -78,6 +81,7 @@ void *dl_layer_client(void *num){
 	int rc;
 	int old_queued=0;
 	frame buffer;
+	string recv_temp_buff;
 
 	//Initalize Physical Layer
 	pthread_t phy_thread;
@@ -160,7 +164,22 @@ void *dl_layer_client(void *num){
 						previous_frame_received=((previous_frame_received+1)%4);
 
 						pthread_mutex_lock(&mutex_phy_receive);
-						dl_receive_q.push(buffer.data);
+						if (buffer.data[strlen(buffer.data)-1]=='\v'){
+							string temp1=string(buffer.data);
+							recv_temp_buff.append(temp1.substr(0,temp1.length()-1));
+
+						}
+						else
+							recv_temp_buff.append(buffer.data);
+						//check if endline character exists
+						for (int u=0;u<recv_temp_buff.size();u++)
+							if (recv_temp_buff[u]=='\f'){
+								string str2 = recv_temp_buff.substr (0,recv_temp_buff.length()-1);
+								cout<<"Delim Found, Message: "<<str2<<endl;
+								dl_receive_q.push(str2);
+								recv_temp_buff.clear();
+								}
+
 						phy_receive_q.pop();
 						pthread_mutex_unlock(&mutex_phy_receive);
 						
@@ -252,6 +271,7 @@ int wait_for_event(void){
 		event=1;
 	    else if (!dl_send_q.empty()){
 		event=2;
+		message_cutter();
 	//	if(queued>=4)
 	//		continue;
 	   }
@@ -360,5 +380,45 @@ frame deconstruct_frame(string input){
 	}
 
 	  return buffer2;
+}
+
+//Message Cutter
+int message_cutter(){
+
+	pthread_mutex_lock(&mutex_dl_send);
+	int i=dl_send_q.size();
+	string message;
+	string piece;
+
+	for (int k=0;k<i;k++){
+		message.clear();
+		message=dl_send_q.front();
+		dl_send_q.pop();
+		int number_of_pieces=(int)ceil((double)message.size()/(double)BUFFER_SIZE);
+		if (number_of_pieces>1)
+			cout<<"Message being cut into "<<number_of_pieces<<" (Pieces)"<<endl;
+		//cout<<message.size()<<endl;
+		for (int i=0;i<number_of_pieces;i++){
+			piece.clear();
+			if (i==(number_of_pieces-1)){
+				piece=message.substr(i*BUFFER_SIZE,(i)*BUFFER_SIZE+(message.size()%BUFFER_SIZE));
+				
+				if (piece[piece.length()-1]!='\f')//Dont add delimeter if already there
+					if (piece[piece.length()-1]!='\v')	
+						piece.append("\f");//end marker
+
+				dl_send_q.push(piece);
+			}
+			else{
+				string str=message.substr(i*BUFFER_SIZE,(i+1)*BUFFER_SIZE);
+				dl_send_q.push(str.append("\v"));//Mid message marker
+
+			}
+		}
+			
+	}
+	pthread_mutex_unlock(&mutex_dl_send);
+
+	return 0;
 }
 

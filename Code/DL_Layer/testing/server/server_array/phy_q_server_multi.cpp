@@ -167,14 +167,14 @@ void *phy_layer_t(void* num){
             }
             else{
 		//string str=string(inbuff);
-		cout<<"FULL MESSAGE: "<<inbuff<<"|"<<endl;    
+		//cout<<"FULL MESSAGE: "<<inbuff<<"|"<<endl;    
 		//count messages
 		int messages=0;
 		int saved=0;
 		string temp_str;
 		for (int p=0;p<strlen(inbuff);p++){
 			if (inbuff[p]=='\t'){
-				cout<<temp_str<<endl;
+				//cout<<temp_str<<endl;
 				char *pch;
 				pch = new char [temp_str.size()+1];
 				strcpy(pch,temp_str.c_str());
@@ -184,7 +184,7 @@ void *phy_layer_t(void* num){
 				crc=atoi(crc_c);
 				//remove crc
 				pch[strlen(pch)-1]= '\0';	
-				cout<<"Received: "<<pch<<endl;
+				//cout<<"Received: "<<pch<<endl;
 				//Check CRC
 				if(get_crc(string(pch))==crc){				
 				//cout<<"Correct CRC"<<endl;
@@ -262,7 +262,7 @@ int get_crc(string str){
 
 	bitset<8> mybits=0;
         bitset<8> crc=0;
-	cout<<"MESSAGE SIZE= "<<str.size()<<endl;
+	//cout<<"MESSAGE SIZE= "<<str.size()<<endl;
         for (int i=0;i<str.size();i++){
 
                 mybits=bitset<8>(str[i]);

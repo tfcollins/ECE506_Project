@@ -17,10 +17,12 @@
 
 #include "all.h"
 #include <sys/time.h>
+#include <cmath>
 
 using namespace std;
 
 //Window Size
+#define BUFFER_SIZE 128
 #define MAX_SEQ 4
 #define MAX_PKT 200
 #define TIMEOUT_MAX 3000000 //fix later, 1 sec = 1000000
@@ -45,6 +47,7 @@ void *time_disp(void* num);
 int timeouts(void);
 frame deconstruct_frame(char *input);
 long current_time();
+int message_cutter(int client);
 
 //globals
 long timers[4]={0};
@@ -86,6 +89,7 @@ void *dl_layer_server(void *client_num){
 	int ack_expected = 0;
 	int rc;
 	frame buffer;
+	string recv_temp_buff;
 
 	
 	//Spawn Timers Status Thread, updates when timers change
@@ -150,14 +154,31 @@ void *dl_layer_server(void *client_num){
 		
 					//Correct order in sequence
 					pthread_mutex_lock(&mutex_prev_seq_num);
-					cout<<"Message: "<<buffer.data<<"|"<<endl;
+					//cout<<"Message: "<<buffer.data<<"|"<<endl;
 					//cout<<"Prev Seq: "<<previous_frame_received[client]<<" Recvd Seq: "<<buffer.seq_NUM<<" Client: "<<client<<endl;
 					if (buffer.seq_NUM==((previous_frame_received[client]+1)%4)){
 						//cout<<"Correctly Ordered Frame"<<endl;
 						previous_frame_received[client]=((previous_frame_received[client]+1)%4);
 						
 						pthread_mutex_lock(&mutex_dl_receive[client]);
-						dl_receive_q[client].push(buffer.data);
+						if (buffer.data[strlen(buffer.data)-1]=='\v'){
+                                                        string temp1=string(buffer.data);
+                                                        recv_temp_buff.append(temp1.substr(0,temp1.length()-1));
+
+                                                }
+                                                else
+							recv_temp_buff.append(buffer.data);
+                                                //check if endline character exists
+                                                for (int u=0;u<recv_temp_buff.size();u++)
+                                                        if (recv_temp_buff[u]=='\f'){
+								cout<<"Found Delimiter"<<endl;
+								string str2 = recv_temp_buff.substr (0,recv_temp_buff.length()-1);
+
+								cout<<"Resulting message: "<<str2<<endl;
+                                                                dl_receive_q[client].push(str2);
+							
+                                                                recv_temp_buff.clear();
+                                                                }
 						pthread_mutex_unlock(&mutex_dl_receive[client]);
 	
 						pthread_mutex_lock(&mutex_phy_receive[client]);
@@ -250,8 +271,10 @@ int wait_for_event(int client){
 	    pthread_mutex_lock( &mutex_dl_send[client] );
 	    if (!phy_receive_q[client].empty())
 		event=1;
-	    else if (!dl_send_q[client].empty())
+	    else if (!dl_send_q[client].empty()){
 		event=2;
+		message_cutter(client);
+	    }
 	    else if (timeouts())//Need a timeout function
 		event=3;
 	    pthread_mutex_unlock( &mutex_phy_receive[client] );
@@ -355,5 +378,40 @@ frame deconstruct_frame(char *input){
 	}
 
 	return buffer2;
+}
+
+
+//Message Cutter
+int message_cutter(int client){
+
+        pthread_mutex_lock(&mutex_dl_send[client]);
+        int i=dl_send_q[client].size();
+        string message;
+        string piece;
+
+        for (int k=0;k<i;k++){
+                message.clear();
+                message=dl_send_q[client].front();
+                dl_send_q[client].pop();
+                int number_of_pieces=(int)ceil(message.size()/BUFFER_SIZE);
+                for (int i=0;i<number_of_pieces;i++){
+                        piece.clear();
+                        if (i==(number_of_pieces-1)){
+                                piece=message.substr(i*BUFFER_SIZE,(i)*BUFFER_SIZE+(message.size()%BUFFER_SIZE));
+                                if (piece[piece.length()-1]!='\f')
+					if (piece[piece.length()-1]!='\f') 
+						piece.append("\f");//end marker
+                                dl_send_q[client].push(piece);
+                        }
+                        else{
+				string str=message.substr(i*BUFFER_SIZE,(i+1)*BUFFER_SIZE);
+                                dl_send_q[client].push(str.append("\v"));
+		}
+                }
+
+        }
+        pthread_mutex_unlock(&mutex_dl_send[client]);
+
+        return 0;
 }
 

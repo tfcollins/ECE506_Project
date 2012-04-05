@@ -64,8 +64,14 @@ int main(int argc, char *argv[]){
 		if (count==20){
 			cout<<"Sending Message (APP)"<<endl;
 			pthread_mutex_lock(&mutex_app_send);
-			dl_send_q.push("Message01");
+			dl_send_q.push("THISDASDLASDLSAKJGFDGJLKDFLGKFKLDGKLFDGLFDKLGFDLKGKLFDGLKFDLKGJKLFDGLKDFLKGKLDFGLKGLKDLFKGLKDFSISIIFDSFSDFASDASDDKLFFdsfkldsfjslkdfldskflsdf");
 			pthread_mutex_unlock(&mutex_app_send);
+			cout<<"Sending Message (APP)"<<endl;
+			pthread_mutex_lock(&mutex_app_send);
+			dl_send_q.push("THISDASDLASDLSAKJGFDGJLKDFLGKFKLDGKLFDGLFDKLGFDLKGKLFDGLKFDLKGJKLFDGLKDFLKGKLDFGLKGLKDLFKGLKDFSISIIFDSFSDFASDASDDKLFFdsfkldsfjslkdfldskflsdf2");
+			pthread_mutex_unlock(&mutex_app_send);
+
+
 		}
 
 		if (count==40)
