@@ -10,8 +10,17 @@ RM := rm -rf
 -include sources.mk
 -include PHY_Layer/testing/subdir.mk
 -include PHY_Layer/server/subdir.mk
+-include PHY_Layer/old/server/subdir.mk
+-include PHY_Layer/old/client/subdir.mk
 -include PHY_Layer/client/subdir.mk
--include APP_Layer/testing/subdir.mk
+-include DL_Layer/testing/server/server_array/subdir.mk
+-include DL_Layer/testing/server/subdir.mk
+-include DL_Layer/testing/client/subdir.mk
+-include DL_Layer/testing/subdir.mk
+-include APP_Layer/server_testing/subdir.mk
+-include APP_Layer/client_testing/server/server_array/subdir.mk
+-include APP_Layer/client_testing/server/subdir.mk
+-include APP_Layer/client_testing/subdir.mk
 -include subdir.mk
 -include objects.mk
 
@@ -41,19 +50,19 @@ endif
 # Add inputs and outputs from these tool invocations to the build variables 
 
 # All Target
-all: ECE506_Project
+all: ECE506_Chatroom
 
 # Tool invocations
-ECE506_Project: $(OBJS) $(USER_OBJS)
+ECE506_Chatroom: $(OBJS) $(USER_OBJS)
 	@echo 'Building target: $@'
-	@echo 'Invoking: GCC C++ Linker'
-	g++  -o "ECE506_Project" $(OBJS) $(USER_OBJS) $(LIBS)
+	@echo 'Invoking: Cross G++ Linker'
+	g++  -o "ECE506_Chatroom" $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 
 # Other Targets
 clean:
-	-$(RM) $(OBJS)$(C++_DEPS)$(C_DEPS)$(CC_DEPS)$(CPP_DEPS)$(EXECUTABLES)$(CXX_DEPS)$(C_UPPER_DEPS) ECE506_Project
+	-$(RM) $(C++_DEPS)$(OBJS)$(C_DEPS)$(CC_DEPS)$(CPP_DEPS)$(EXECUTABLES)$(CXX_DEPS)$(C_UPPER_DEPS) ECE506_Chatroom
 	-@echo ' '
 
 .PHONY: all clean dependents
