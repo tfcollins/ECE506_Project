@@ -34,7 +34,6 @@ using namespace std;
 typedef struct{
 	int type; //0 for non ACK, 1 for ACK
 	int seq_NUM;
-	//int ack_NUM;
 	char *data; //[MAX_PKT];
 } frame;
 
@@ -106,21 +105,16 @@ void *dl_layer_client(void *num){
 
 	//Wait for events to happen
 	while (1) {
-		//cout<<"Waiting for event (DL)"<<endl;
 		int event=wait_for_event();
-		//cout<<"Event Occurred: "<<event<<" (DL)"<<endl;
 		switch (event) {
 
 			//If PHY Layer receives message
 			case (PHY):
-				//bzero(&buffer.data,sizeof(buffer.data));
 				buffer = deconstruct_frame(phy_receive_q.front());
-				//cout<<"Data: "<<buffer.data<<" seq_NUM: "<<buffer.seq_NUM<<" Type: "<<buffer.type<<endl; 
 
 				//ACK Received
 				if (buffer.type){
 					//Compare ACK seq number with older seq num in window
-					//cout<<"ACK Expected: "<<frame_expected<<" ACK Recvd: "<<buffer.seq_NUM<<endl;
 					int start=ack_expected;
 					int count=0;
 					while(1){
@@ -143,23 +137,10 @@ void *dl_layer_client(void *num){
 					pthread_mutex_lock(&mutex_phy_receive);
 					phy_receive_q.pop();
 					pthread_mutex_unlock(&mutex_phy_receive);
-
-					/*
-					if (buffer.seq_NUM!=frame_expected){
-						cout<<"ACK Out of order, Dropping (DL)"<<endl;
-						phy_receive_q.pop();
-						break;//Drop Packet
-					}
-					cout<<"CORRECT ACK"<<endl;
-					phy_receive_q.pop();
-					window_q.pop();//Remove oldest frame from saved window
-					queued--;
-					frame_expected=(frame_expected+1)%4;//Increment and wrap
-				*/}
+				}
 				else{//Data Frame Received
 		
 					//Correct order in sequence
-					//cout<<"Prev Seq: "<<previous_frame_received<<" Recvd Seq: "<<buffer.seq_NUM<<endl;
 					if (buffer.seq_NUM==(previous_frame_received+1)%4){
 						previous_frame_received=((previous_frame_received+1)%4);
 
@@ -173,9 +154,8 @@ void *dl_layer_client(void *num){
 							recv_temp_buff.append(buffer.data);
 						//check if endline character exists
 						for (int u=0;u<recv_temp_buff.size();u++)
-							if (recv_temp_buff[u]=='\f'){
+							if (recv_temp_buff[u]=='\f'){//End of cutup message found
 								string str2 = recv_temp_buff.substr (0,recv_temp_buff.length()-1);
-								cout<<"Delim Found, Message: "<<str2<<endl;
 								dl_receive_q.push(str2);
 								recv_temp_buff.clear();
 								}
@@ -225,8 +205,6 @@ void *dl_layer_client(void *num){
 
 			//If No ACK received, timeout, and resend
 			case (TIME_OUT):
-				//frame_to_send = ack_expected;
-				//int frame_index=frame_to_send;
 				//Reset N Frames
 				if (queued==0){
 					cout<<"Timeout incorrect Queue Size"<<endl;
@@ -245,7 +223,6 @@ void *dl_layer_client(void *num){
 					//data = dl_send_q();
 					send_data((ack_expected+i)%4, frame_expected, data, 0);
 
-					//frame_to_send=((frame_to_send+1)%4);
 					//Reset Timer(s)
 					cout<<"Reseting Timer: "<<i<<endl;
 					cout<<"Timer: "<<timers[i]<<" Current: "<<current_time()<<" Diff: "<<(current_time()-timers[i])<<endl;
@@ -272,13 +249,9 @@ int wait_for_event(void){
 	    else if (!dl_send_q.empty()){
 		event=2;
 		message_cutter();
-	//	if(queued>=4)
-	//		continue;
 	   }
 	    else if (timeouts())//Need a timeout function
 		event=3;
-	    //else
-	      //  wait_for_event();
 	}
 
 	return event;
@@ -321,7 +294,6 @@ int timeouts(void){
 			cout<<"Timeout occured (DL), timer: "<<i<<endl;
 			return 1;//Timeout occured
 		}
-	//cout<<"No timeouts"<<'\r';
 	return 0;//No timeouts
 
 }
@@ -368,10 +340,6 @@ frame deconstruct_frame(string input){
 			buffer2.seq_NUM=atoi(split);
 			split = strtok (NULL,"\a");
 		}
-	/*	else if (t==3){
-			buffer2.ack_NUM=atoi(split);
-			split = strtok (NULL,"\a");
-		}*/
 		else{
 			buffer2.data=split;
 			break;
@@ -397,7 +365,6 @@ int message_cutter(){
 		int number_of_pieces=(int)ceil((double)message.size()/(double)BUFFER_SIZE);
 		if (number_of_pieces>1)
 			cout<<"Message being cut into "<<number_of_pieces<<" (Pieces)"<<endl;
-		//cout<<message.size()<<endl;
 		for (int i=0;i<number_of_pieces;i++){
 			piece.clear();
 			if (i==(number_of_pieces-1)){

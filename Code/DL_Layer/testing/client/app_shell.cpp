@@ -75,7 +75,15 @@ int main(int argc, char *argv[]){
 		}
 
 		if (count==40)
-			break;		
+			break;
+
+		if (!dl_receive_q.empty()){
+			pthread_mutex_lock(&mutex_dl_receive);
+			cout<<"Message Received: "<<dl_receive_q.front()<<endl;
+			dl_receive_q.pop();
+			pthread_mutex_unlock(&mutex_dl_receive);
+						
+		}
 	}
 
 	pthread_cancel(dl_thread);

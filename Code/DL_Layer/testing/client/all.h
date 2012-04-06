@@ -48,6 +48,7 @@ extern char *HOSTNAME;
 
 //Function prototypes
 void diewithError(string message);
+void verbose(string message);
 void printhelp(void);
 //int phy_setup(int port, struct hostent *server);
 int count_words(char *str);

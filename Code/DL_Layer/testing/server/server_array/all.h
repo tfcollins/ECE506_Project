@@ -35,6 +35,8 @@ extern queue<string> window_q[20];
 
 extern pthread_mutex_t mutex_phy_send[20];
 extern pthread_mutex_t mutex_phy_receive[20];
+extern pthread_mutex_t mutex_dl_send[20];
+extern pthread_mutex_t mutex_dl_receive[20];
 extern pthread_mutex_t mutex_socket[20];
 extern pthread_mutex_t mutex_app_send_q[20];
 extern pthread_mutex_t mutex_app_receive_q[20];
@@ -43,6 +45,7 @@ extern pthread_mutex_t mutex_window_q[20];
 extern int PORT;
 extern int previous_frame_received[20];
 extern pthread_t dl_thread[20];
+extern int clients;
 
 //Function prototypes
 void diewithError(string message);

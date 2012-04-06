@@ -34,7 +34,18 @@ int main(int argc, char *argv[]){
 
 		if (count==45)
 			break;		
+
+		for (int i=0;i<clients;i++){
+			pthread_mutex_lock(&mutex_dl_receive[i]);
+			if (!dl_receive_q[i].empty()){
+				cout<<"APP LAYER Message: "<<dl_receive_q[i].front()<<endl;
+				dl_receive_q[i].pop();
+			}
+			pthread_mutex_unlock(&mutex_dl_receive[i]);
+			}
+
 	}
+
 
 	pthread_cancel(phy_thread);
 	return 0;

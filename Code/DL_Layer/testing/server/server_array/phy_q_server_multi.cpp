@@ -6,6 +6,7 @@
 #define BUFFER_SIZE 256
 
 char* HOSTNAME;
+int clients=0;
 
 void diewithError(string message) {
         cout<<message<<endl;
@@ -79,7 +80,7 @@ void *phy_layer_server(void *num){
 			pthread_detach(phy_layer_thread[client]);
 			cout<<"Thread spawned for client (PHY)"<<endl;
 			client++;
-
+			clients=client;
 		}
 	}
 	//Something went wrong :(
