@@ -42,7 +42,7 @@ int main(int argc, char *argv[]) {
 	if (buffer.size() > 256) diewithError("Greater than 256 bytes");
 
 	//Setup and connect to server
-	//HOSTNAME = gethostbyname(argv[1]);
+	HOSTNAME = argv[1];
 	//if (HOSTNAME == NULL) diewithError("Error, no such host!");
 
 	pthread_t dl_thread;
@@ -195,10 +195,10 @@ void *recv_display(void *num){
 	while(1){
 		if(!app_receive_q.empty()){
 
-			pthread_mutex_lock(&mutex_dl_receive);
+			pthread_mutex_lock(&mutex_app_receive);
 			string recvd = dl_receive_q.front();
 			dl_receive_q.pop();
-			pthread_mutex_unlock(&mutex_dl_receive);
+			pthread_mutex_unlock(&mutex_app_receive);
 
 			cout << "\nMessage received from server!" << endl;
 			cout << "'" + recvd + "'" << endl;
