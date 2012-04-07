@@ -2,6 +2,7 @@
 
 int PORT;
 char* HOSTNAME;
+int vb_mode=0;
 
 int main(int argc, char *argv[]){
 
@@ -9,6 +10,9 @@ int main(int argc, char *argv[]){
 		cout<<"Need Port and Hostname"<<endl;
 		exit(1);
 	}
+	if (argc==4)
+		vb_mode=atoi(argv[3]);
+
 	PORT=atoi(argv[1]);
 	HOSTNAME=argv[2];
 
@@ -61,7 +65,7 @@ int main(int argc, char *argv[]){
 			dl_send_q.push("Message00");
 			pthread_mutex_unlock(&mutex_app_send);
 		}
-		if (count==20){
+		if (count==400){
 			cout<<"Sending Message (APP)"<<endl;
 			pthread_mutex_lock(&mutex_app_send);
 			dl_send_q.push("THISDASDLASDLSAKJGFDGJLKDFLGKFKLDGKLFDGLFDKLGFDLKGKLFDGLKFDLKGJKLFDGLKDFLKGKLDFGLKGLKDLFKGLKDFSISIIFDSFSDFASDASDDKLFFdsfkldsfjslkdfldskflsdf");

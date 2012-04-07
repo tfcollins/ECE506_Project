@@ -1,6 +1,7 @@
 #include "all.h"
 
 int PORT;
+int vb_mode=0;
 
 int main(int argc, char *argv[]){
 
@@ -9,6 +10,10 @@ int main(int argc, char *argv[]){
 		exit(1);
 	}
 	PORT=atoi(argv[1]);
+
+	if (argc==3)
+		vb_mode=atoi(argv[2]);
+	
 
 	//Start dl_layer
 	//Initalize Physical Layer
@@ -32,7 +37,7 @@ int main(int argc, char *argv[]){
 			continue;
 		}
 
-		if (count==45)
+		if (count==60)
 			break;		
 
 		for (int i=0;i<clients;i++){

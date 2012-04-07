@@ -34,7 +34,6 @@ using namespace std;
 typedef struct{
 	int type; //0 for non ACK, 1 for ACK
 	int seq_NUM;
-//	int ack_NUM;
 	char *data;
 } frame;
 
@@ -99,26 +98,19 @@ void *dl_layer_server(void *client_num){
 		cout<<"Something bad happened with thread creation :("<<endl;
 		exit(1);
 	}*/
+
 	string input;
 	char *tmp;
 	previous_frame_received[client]=3;
 	//Wait for events to happen
 	while (1) {
-		//cout<<"Waiting for event (DL)"<<endl;
-		//cout<<"PREV:"<<previous_frame_received[client]<<endl;
 		int event=wait_for_event(client);
-		//cout<<"Event Occurred: "<<event<<" (DL)"<<endl;
-		//cout<<&event<<endl;
 		switch (event) {
 
 			//If PHY Layer receives message
 			case (PHY):
-				//cout<<"Last correct seq: "<<previous_frame_received<<endl;
-				//bzero(&buffer.data,sizeof(buffer.data));
 				pthread_mutex_lock(&mutex_phy_receive[client]);
-				//cout<<"phy_r_q Client: "<<client<<endl;
 				input = phy_receive_q[client].front();
-				//cout<<"Comp"<<endl;
 				pthread_mutex_unlock(&mutex_phy_receive[client]);
 
 				tmp = &input[0];
@@ -161,7 +153,7 @@ void *dl_layer_server(void *client_num){
 						previous_frame_received[client]=((previous_frame_received[client]+1)%4);
 						
 						pthread_mutex_lock(&mutex_dl_receive[client]);
-						if (buffer.data[strlen(buffer.data)-1]=='\v'){
+						if (buffer.data[strlen(buffer.data)-1]=='\x88'){
                                                         string temp1=string(buffer.data);
                                                         recv_temp_buff.append(temp1.substr(0,temp1.length()-1));
 
@@ -170,11 +162,10 @@ void *dl_layer_server(void *client_num){
 							recv_temp_buff.append(buffer.data);
                                                 //check if endline character exists
                                                 for (int u=0;u<recv_temp_buff.size();u++)
-                                                        if (recv_temp_buff[u]=='\f'){
-								cout<<"Found Delimiter"<<endl;
+                                                        if (recv_temp_buff[u]=='\?'){
+								verbose("Found Delimiter (DL)");
 								string str2 = recv_temp_buff.substr (0,recv_temp_buff.length()-1);
-
-								cout<<"Resulting message: "<<str2<<endl;
+								verbose("Resulting message: "+str2+" (DL)");
                                                                 dl_receive_q[client].push(str2);
 							
                                                                 recv_temp_buff.clear();
@@ -189,11 +180,9 @@ void *dl_layer_server(void *client_num){
 						//cout<<"Sending ACK (DL)"<<endl;
 					}
 					else{//Drop Packet
-						cout<<"Data Frame out order, dropping (DL)"<<endl;
+						verbose("Data Frame out order, dropping (DL)");
 						pthread_mutex_lock(&mutex_phy_receive[client]);
-						//cout<<"phy_r_q Client"<<client<<endl;
 						phy_receive_q[client].pop();
-						//cout<<"Comp"<<endl;
 						pthread_mutex_unlock(&mutex_phy_receive[client]);
 						//break;//not sure if needed
 					}
@@ -241,8 +230,8 @@ void *dl_layer_server(void *client_num){
 					send_data(frame_to_send, frame_expected, data, 0, client);
 					frame_to_send++;
 					//Reset Timer(s)
-					cout<<"Reseting Timer: "<<i<<endl;
-					cout<<"Timer: "<<timers[i]<<" Current: "<<current_time()<<" Diff: "<<(current_time()-timers[i])<<endl;
+					//verbose("Reseting Timer: "+string(i));;
+					//verbose("Timer: "+string(timers[i])+" Current: "+string(current_time())+" Diff: "+string(current_time()-timers[i]));
 					timers[i]=current_time();
 					//clear the queue
 				}
@@ -266,7 +255,6 @@ int wait_for_event(int client){
 	while(event<1){
 	    client_temp=client;
 	    //sleep(1);
-	    //cout<<"ALIVE CLIENT: "<<client<<endl;
 	    pthread_mutex_lock( &mutex_phy_receive[client] );	
 	    pthread_mutex_lock( &mutex_dl_send[client] );
 	    if (!phy_receive_q[client].empty())
@@ -299,9 +287,7 @@ static void send_data(int frame_to_send, int frame_expected, string buff, int ty
 	string tosend = string(type_c) + '\a' + frame_to_send_c + '\a' + buff;
 
 	pthread_mutex_lock(&mutex_phy_send[client]);
-	//cout<<"phy_s_q Client: "<<client<<endl;
 	phy_send_q[client].push(tosend);
-	//cout<<"Comp"<<endl;
 	pthread_mutex_unlock(&mutex_phy_send[client]);
 
 }
@@ -322,10 +308,9 @@ int timeouts(void){
 	//Look at times
 	for (int i=0;i<queued;i++)
 		if ((current-timers[i])>TIMEOUT_MAX){
-			cout<<"Timeout occured (DL)"<<endl;
+			verbose("Timeout occured (DL)");
 			return 1;//Timeout occured
 		}
-	//cout<<"No timeouts"<<'\r';
 	return 0;//No timeouts
 
 }
@@ -398,14 +383,14 @@ int message_cutter(int client){
                         piece.clear();
                         if (i==(number_of_pieces-1)){
                                 piece=message.substr(i*BUFFER_SIZE,(i)*BUFFER_SIZE+(message.size()%BUFFER_SIZE));
-                                if (piece[piece.length()-1]!='\f')
-					if (piece[piece.length()-1]!='\f') 
-						piece.append("\f");//end marker
+                                if (piece[piece.length()-1]!='\?')
+					if (piece[piece.length()-1]!='\x88') 
+						piece.append("\?");//end marker
                                 dl_send_q[client].push(piece);
                         }
                         else{
 				string str=message.substr(i*BUFFER_SIZE,(i+1)*BUFFER_SIZE);
-                                dl_send_q[client].push(str.append("\v"));
+                                dl_send_q[client].push(str.append("\x88"));
 		}
                 }
 

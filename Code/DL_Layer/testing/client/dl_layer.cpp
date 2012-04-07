@@ -25,7 +25,7 @@ using namespace std;
 #define MAX_SEQ 4
 #define MAX_PKT 200
 #define BUFFER_SIZE 128
-#define TIMEOUT_MAX 10000000 //fix later, 1 sec = 1000000
+#define TIMEOUT_MAX 5000000 //fix later, 1 sec = 1000000
 
 #define PHY 1
 #define APP 2
@@ -124,13 +124,13 @@ void *dl_layer_client(void *num){
 						count++;		
 					}
 					if(count>0)
-						cout<<"Readjusting Known ACKS"<<endl;
+						verbose("Readjusting Known ACKS (DL)");
 					for(int h=0;h<=count;h++){
 						pthread_mutex_lock(&mutex_window_q);
 						window_q.pop();
 						pthread_mutex_unlock(&mutex_window_q);
 						if (queued==0)
-							cout<<"Queue Error (DL)"<<endl;
+							verbose("Queue Error (DL)");
 						queued--;
 						ack_expected=(ack_expected+1)%4;
 					}
@@ -145,7 +145,7 @@ void *dl_layer_client(void *num){
 						previous_frame_received=((previous_frame_received+1)%4);
 
 						pthread_mutex_lock(&mutex_phy_receive);
-						if (buffer.data[strlen(buffer.data)-1]=='\v'){
+						if (buffer.data[strlen(buffer.data)-1]=='\x88'){
 							string temp1=string(buffer.data);
 							recv_temp_buff.append(temp1.substr(0,temp1.length()-1));
 
@@ -154,7 +154,7 @@ void *dl_layer_client(void *num){
 							recv_temp_buff.append(buffer.data);
 						//check if endline character exists
 						for (int u=0;u<recv_temp_buff.size();u++)
-							if (recv_temp_buff[u]=='\f'){//End of cutup message found
+							if (recv_temp_buff[u]=='\?'){//End of cutup message found
 								string str2 = recv_temp_buff.substr (0,recv_temp_buff.length()-1);
 								dl_receive_q.push(str2);
 								recv_temp_buff.clear();
@@ -166,7 +166,7 @@ void *dl_layer_client(void *num){
 						send_data(buffer.seq_NUM, 9, "ACK", 1);//Send ACK
 					}
 					else{//Drop Packet
-						cout<<"Data Frame out order, dropping (DL)"<<endl;
+						verbose("Data Frame out order, dropping (DL)");
 						pthread_mutex_lock(&mutex_phy_receive);
 						phy_receive_q.pop();
 						pthread_mutex_unlock(&mutex_phy_receive);
@@ -181,8 +181,8 @@ void *dl_layer_client(void *num){
 			case (APP):
 				if (queued >= MAX_SEQ){
 					if (old_queued!=queued){
-						cout<<"Queue Maxed, must wait for ACK, queued:"<<queued<<endl;
-						old_queued=queued;
+						verbose("Queue Maxed, must wait for ACK (DL)");
+						old_queued=queued;//Used to display messages only when queue changes in size
 					}
 					break;
 				}
@@ -207,7 +207,7 @@ void *dl_layer_client(void *num){
 			case (TIME_OUT):
 				//Reset N Frames
 				if (queued==0){
-					cout<<"Timeout incorrect Queue Size"<<endl;
+					verbose("ERROR Timeout incorrect Queue Size (DL)");
 					exit(1);
 				}
 				for (int i = 0; i < queued; i++){
@@ -224,8 +224,8 @@ void *dl_layer_client(void *num){
 					send_data((ack_expected+i)%4, frame_expected, data, 0);
 
 					//Reset Timer(s)
-					cout<<"Reseting Timer: "<<i<<endl;
-					cout<<"Timer: "<<timers[i]<<" Current: "<<current_time()<<" Diff: "<<(current_time()-timers[i])<<endl;
+					verbose("Reseting Timer");
+					//cout<<"Timer: "<<timers[i]<<" Current: "<<current_time()<<" Diff: "<<(current_time()-timers[i])<<endl;
 					timers[i]=current_time();
 					//clear the queue
 				}
@@ -291,7 +291,7 @@ int timeouts(void){
 	//Look at times
 	for (int i=0;i<queued;i++)
 		if ((current-timers[i])>TIMEOUT_MAX){
-			cout<<"Timeout occured (DL), timer: "<<i<<endl;
+			verbose("Timeout occured (DL)");
 			return 1;//Timeout occured
 		}
 	return 0;//No timeouts
@@ -364,21 +364,22 @@ int message_cutter(){
 		dl_send_q.pop();
 		int number_of_pieces=(int)ceil((double)message.size()/(double)BUFFER_SIZE);
 		if (number_of_pieces>1)
-			cout<<"Message being cut into "<<number_of_pieces<<" (Pieces)"<<endl;
+			verbose("Message being cut into Pieces");
+		//Add Delimiters
 		for (int i=0;i<number_of_pieces;i++){
 			piece.clear();
-			if (i==(number_of_pieces-1)){
+			if (i==(number_of_pieces-1)){//Last piece
 				piece=message.substr(i*BUFFER_SIZE,(i)*BUFFER_SIZE+(message.size()%BUFFER_SIZE));
 				
-				if (piece[piece.length()-1]!='\f')//Dont add delimeter if already there
-					if (piece[piece.length()-1]!='\v')	
-						piece.append("\f");//end marker
+				if (piece[piece.length()-1]!='\?')//Dont add end delimeter if already there
+					if (piece[piece.length()-1]!='\x88')//Dont add mid delimeter if already there
+						piece.append("\?");//end marker
 
 				dl_send_q.push(piece);
 			}
 			else{
 				string str=message.substr(i*BUFFER_SIZE,(i+1)*BUFFER_SIZE);
-				dl_send_q.push(str.append("\v"));//Mid message marker
+				dl_send_q.push(str.append("\x88"));//Mid message marker
 
 			}
 		}

@@ -45,6 +45,7 @@ extern pthread_mutex_t mutex_window_q;
 extern int PORT;
 extern int connected;
 extern char *HOSTNAME;
+extern int vb_mode;
 
 //Function prototypes
 void diewithError(string message);

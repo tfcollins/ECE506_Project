@@ -23,7 +23,8 @@ void diewithError(string message) {
         exit(1);
 }
 void verbose(string message) {
-        cout<<message<<endl;
+	if (vb_mode)
+        	cout<<message<<endl;
 //	return 0;
 }
 
@@ -148,7 +149,7 @@ void *phy_layer_t(void* num){
 
 		strcpy(outbuff,temp.c_str());    
 		
-		//verbose("Sending "+"'"+string(outbuff)+"'"+" (PHY)");
+		verbose("Sending '"+string(outbuff)+"' (PHY)");
                 write(thefd,outbuff,strlen(outbuff));
                 memset(&outbuff,0,sizeof(outbuff));
                 

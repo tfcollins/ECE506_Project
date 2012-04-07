@@ -46,9 +46,11 @@ extern int PORT;
 extern int previous_frame_received[20];
 extern pthread_t dl_thread[20];
 extern int clients;
+extern int vb_mode;
 
 //Function prototypes
 void diewithError(string message);
+void verbose(string message);
 void printhelp(void);
 //int phy_setup(int port, struct hostent *server);
 int count_words(char *str);
