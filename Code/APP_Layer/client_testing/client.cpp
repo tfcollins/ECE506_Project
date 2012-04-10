@@ -12,7 +12,8 @@ int vb_mode=0;
 using namespace std;
 void *recv_display(void *num);
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[]){
+
 	int sockfd, n;
 	struct sockaddr_in serv_addr;
 
@@ -21,7 +22,7 @@ int main(int argc, char *argv[]) {
 		fprintf(stderr, "usage:\n %s <server> login <username> <age> <location> <hobby>\n", argv[0]);
 		exit(0);
 	}
-	if (argc == 8) vb_mode = atoi(argv[8]);
+	if (argc == 8) vb_mode = atoi(argv[7]);
 
 	//If not login
 	if (strcmp(argv[2],"login") != 0) {
@@ -67,7 +68,7 @@ int main(int argc, char *argv[]) {
 	while (1) {
 		pthread_mutex_lock(&mutex_dl_receive);
 		if(!dl_receive_q.empty()){
-
+			cout << "NOT EMPTYYYY" << endl;
 			string received;
 			received = dl_receive_q.front();
 			dl_receive_q.pop();
@@ -142,7 +143,7 @@ int main(int argc, char *argv[]) {
 			//Will have to add additional sections, based on message size
 			if(go){
 				cout << "Sending '" << tosend << "' to server. (APP)" << endl;
-				tosend = tosend + '\f';
+				//tosend = tosend + '\f';
 				cout<<"Sending Login (APP)"<<endl;
 				pthread_mutex_lock(&mutex_dl_send);
 				dl_send_q.push(tosend);

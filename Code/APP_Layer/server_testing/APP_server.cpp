@@ -76,6 +76,7 @@ void handle_client(int client_ID){
 		pthread_mutex_lock(&mutex_dl_send[client_ID]);
 		dl_send_q[client_ID].push("loggedin");
 		pthread_mutex_unlock(&mutex_dl_send[client_ID]);
-		cout << "YUPPPPPP";
+		verbose("Successfully Handled Client (APP)");
 	}
+	return;
 }
