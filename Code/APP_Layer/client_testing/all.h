@@ -45,9 +45,11 @@ extern pthread_mutex_t mutex_window_q;
 extern int PORT;
 extern int connected;
 extern char *HOSTNAME;
+extern int vb_mode;
 
 //Function prototypes
 void diewithError(string message);
+void verbose(string message);
 void printhelp(void);
 //int phy_setup(int port, struct hostent *server);
 int count_words(char *str);

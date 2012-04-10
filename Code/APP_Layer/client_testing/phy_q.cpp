@@ -18,6 +18,11 @@
 //#define PORT 5005
 //#define HOSTNAME "CCCWORK2"
 
+void verbose(string message) {
+	if (vb_mode)
+        	cout<<message<<endl;
+//	return 0;
+}
 
 //void *phy_send_t(void* num);
 //void *phy_receive_t(void* num);
@@ -57,7 +62,7 @@ void *phy_layer_t(void* num){
     x=fcntl(thefd,F_GETFL,0);
     fcntl(thefd,F_SETFL,x | O_NONBLOCK);
     connected=0; 
-    cout<<"Socket_SETUP!!!"<<endl;
+    verbose("Socket_SETUP");;
     int crc;
     int total=0;
 
@@ -83,14 +88,14 @@ void *phy_layer_t(void* num){
                 break;
             }
             else{
-		cout<<"FULL MESSAGE: "<<inbuff<<"|"<<endl;	
+		verbose("FULL MESSAGE: "+string(inbuff)+"|");	
 		string temp_str;
 		for (int p=0;p<strlen(inbuff);p++){
 			if (inbuff[p]=='\t'){
 				char * pch;
 				pch = new char [temp_str.size()+1];
 				strcpy(pch,temp_str.c_str());
-				cout<<"Examining: "<<pch<<"|"<<endl;
+				verbose("Examining: "+string(pch)+"|");
 				char crc_c[2];
 				crc_c[0]=pch[strlen(pch)-1];
 				crc_c[1]='\0';
@@ -103,13 +108,13 @@ void *phy_layer_t(void* num){
 					
 				}
 				else{//Drop Packet
-					cout<<"CRC Check FAILLED (PHY)"<<endl;
-					cout<<"Recv CRC: "<<crc<<" Calc CRC: "<<get_crc(string(pch))<<endl;
-					cout<<"Corrupted Message: "<<pch<<"|"<<endl;
+					verbose("CRC Check FAILLED (PHY)");
+					//verbose("Recv CRC: "+string(crc)+" Calc CRC: "+string(get_crc(string(pch))));
+					verbose("Corrupted Message: "+string(pch)+"|");
 					pch = strtok(NULL, "\t");
 					continue;
 				}
-				printf("Received %s|\n",pch);
+				verbose("Received: "+string(pch));
 				pthread_mutex_lock( &mutex_phy_receive );
 				phy_receive_q.push(pch);
 				pthread_mutex_unlock( &mutex_phy_receive );
@@ -140,7 +145,7 @@ void *phy_layer_t(void* num){
 
 		strcpy(outbuff,temp.c_str());    
 		
-		cout<<"Sending "<<"'"<<outbuff<<"'"<<" (PHY)"<<endl;
+		verbose("Sending '"+string(outbuff)+"' (PHY)");
                 write(thefd,outbuff,strlen(outbuff));
                 memset(&outbuff,0,sizeof(outbuff));
                 
@@ -162,23 +167,6 @@ void *phy_layer_t(void* num){
 //Calculate Checksum value
 int get_crc(string str){
 
-/*	bitset<8> mybits=0;
-	bitset<8> mybits2=0;
-
-	for(int i=0; i<str.size(); i++) {
-        	mybits=bitset<8>(str[i]);
-	        //tstr=mybits.to_string<char,char_traits<char>,allocator<char> >();
-		mybits2 = mybits2 ^ mybits;
-	}
-	//cout<<mybits2<<endl;
-
-	//XOR Bits together for remainder
-	int mybit=0;
-	for (int i=0; i<8;i++){
-		mybit= mybit ^ mybits2[i];
-	}
-	return mybit;
-*/
 
 	bitset<8> mybits=0;
         bitset<8> crc=0;

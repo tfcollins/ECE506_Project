@@ -7,6 +7,7 @@
 
 int PORT = 8787;		/* Known port number */
 char* HOSTNAME;
+int vb_mode=0;
 
 using namespace std;
 void *recv_display(void *num);
@@ -16,26 +17,28 @@ int main(int argc, char *argv[]) {
 	struct sockaddr_in serv_addr;
 
 	//Ensure correct number of inputs
-	if (argc != 7) {
-		fprintf(stderr, "usage:\n %s <server> login <username> <location> <age> <hobby>\n", argv[0]);
+	if ((argc < 7) || (argc > 8)) {
+		fprintf(stderr, "usage:\n %s <server> login <username> <age> <location> <hobby>\n", argv[0]);
 		exit(0);
 	}
+	if (argc == 8) vb_mode = atoi(argv[8]);
+
 	//If not login
 	if (strcmp(argv[2],"login") != 0) {
 		cout << "Please login!\n";
-		fprintf(stderr, "usage:\n %s <server> login <username> <location> <age> <hobby>\n", argv[0]);
+		fprintf(stderr, "usage:\n %s <server> login <username> <age> <location> <hobby>\n", argv[0]);
 		exit(0);
 	}
 
 	//Profile and username information
 	string username (argv[3]);
-	string location (argv[4]);
-	string job (argv[5]);
+	string age (argv[4]);
+	string location (argv[5]);
 	string hobby (argv[6]);
 
 	//Build login and profile information buffer
 	string buffer;
-	buffer = username + " " + location + " " + job + " " + hobby;
+	buffer = "login " + username + " " + age + " " + location + " " + hobby;
 
 	//Check if input longer than 256
 	//Eventually split up if larger than 256
@@ -53,8 +56,6 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
 
-	//sockfd = phy_setup(PORT, HOSTNAME);
-
 	//TO DATA LINK LAYER
     cout<<"Sending Login (APP)"<<endl;
     pthread_mutex_lock(&mutex_app_send);
@@ -64,22 +65,25 @@ int main(int argc, char *argv[]) {
 	//Wait for login confirmation
 	bool logged_in;
 	while (1) {
-		//Wait for response from server
-		//string received;
-		//received = app_receive_q(); ? ? ? ?
-		//Not sure what gets passed, so for testing, LOGGEDIN!!
+		pthread_mutex_lock(&mutex_dl_receive);
+		if(!dl_receive_q.empty()){
 
-		string received ("loggedin");
-		if (strcmp(received.c_str(), "loggedin") == 0){
-			pthread_t recv_thread;
-			int rc = pthread_create(&recv_thread, NULL, recv_display, (void *) 1);
-			if (rc){
-				cout<<"Receive thread failed to be created"<<endl;
-				exit(1);
+			string received;
+			received = dl_receive_q.front();
+			dl_receive_q.pop();
+
+			if (strcmp(received.c_str(), "loggedin") == 0){
+				pthread_t recv_thread;
+				int rc = pthread_create(&recv_thread, NULL, recv_display, (void *) 1);
+				if (rc){
+					cout<<"Receive thread failed to be created"<<endl;
+					exit(1);
+				}
+
+				logged_in = true;
+				cout << "Welcome! Type 'help' for chatroom commands" << endl;
 			}
-
-			logged_in = true;
-			cout << "Welcome! Type 'help' for chatroom commands" << endl;
+			pthread_mutex_unlock(&mutex_dl_receive);
 		}
 
 		//Logged in
@@ -140,9 +144,9 @@ int main(int argc, char *argv[]) {
 				cout << "Sending '" << tosend << "' to server. (APP)" << endl;
 				tosend = tosend + '\f';
 				cout<<"Sending Login (APP)"<<endl;
-				pthread_mutex_lock(&mutex_app_send);
+				pthread_mutex_lock(&mutex_dl_send);
 				dl_send_q.push(tosend);
-				pthread_mutex_unlock(&mutex_app_send);
+				pthread_mutex_unlock(&mutex_dl_send);
 				tosend.clear();
 			}
 		}
@@ -193,16 +197,15 @@ int count_words(char *str){
 void *recv_display(void *num){
 	cout << "\nStarted Recv_Display thread" << endl;
 	while(1){
-		if(!app_receive_q.empty()){
-
-			pthread_mutex_lock(&mutex_app_receive);
+		if(!dl_receive_q.empty()){
+			pthread_mutex_lock(&mutex_dl_receive);
 			string recvd = dl_receive_q.front();
 			dl_receive_q.pop();
-			pthread_mutex_unlock(&mutex_app_receive);
+			pthread_mutex_unlock(&mutex_dl_receive);
 
 			cout << "\nMessage received from server!" << endl;
 			cout << "'" + recvd + "'" << endl;
-			cout << "Please continue to enter input!";
+			cout << "Please continue...\nEnter input:";
 		}
 		//sleep(3);
 		//cout << "\nSmelly" << endl;

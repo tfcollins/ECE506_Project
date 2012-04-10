@@ -11,6 +11,8 @@
 
 #include "all.h"
 
+
+//CLIENT
 int phy_setup(int port, struct hostent *serv){
 
 	int sock;
@@ -30,3 +32,34 @@ int phy_setup(int port, struct hostent *serv){
 	}
 	return sock;
 }
+
+//SERVER1
+int phy_setup_server1(int port){
+
+	 //Setup Socket
+        int sockfd, portno;
+        socklen_t clilen;
+        void *newsockfd;
+        struct sockaddr_in serv_addr, cli_addr;
+        sockfd = socket(AF_INET, SOCK_STREAM, 0);
+        if (sockfd < 0)
+                diewithError("ERROR opening socket");
+        bzero((char *) &serv_addr, sizeof(serv_addr));
+        portno = port;
+
+        //Basic Socket Parameters
+        serv_addr.sin_family = AF_INET;
+        serv_addr.sin_addr.s_addr = INADDR_ANY;
+        serv_addr.sin_port = htons(portno);
+        if (bind(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0)
+                diewithError("ERROR on binding");
+        listen(sockfd, 5);
+        clilen = sizeof(cli_addr);
+
+	int sock=accept(sockfd, (struct sockaddr *) &cli_addr, &clilen);
+	cout<<"Socket Accepted"<<endl;
+
+	return sock;
+
+}
+
