@@ -52,7 +52,6 @@ int message_cutter(int client);
 long timers[4]={0};
 int queued = 0;
 int k;
-string data;
 
 queue<string> phy_send_q[20];
 queue<string> phy_receive_q[20];
@@ -89,6 +88,7 @@ void *dl_layer_server(void *client_num){
 	int rc;
 	frame buffer;
 	string recv_temp_buff;
+	string data;
 
 	
 	//Spawn Timers Status Thread, updates when timers change
@@ -194,7 +194,7 @@ void *dl_layer_server(void *client_num){
 			//If APP Layer wants to send message
 			case (APP):
 				pthread_mutex_lock(&mutex_dl_send[client]);
-				data = dl_send_q[client].front();
+				data=dl_send_q[client].front();
 				dl_send_q[client].pop();
 				pthread_mutex_unlock(&mutex_dl_send[client]);
 
@@ -256,21 +256,36 @@ int wait_for_event(int client){
 	    client_temp=client;
 	    //sleep(1);
 	    pthread_mutex_lock( &mutex_phy_receive[client] );	
-	    pthread_mutex_lock( &mutex_dl_send[client] );
-	    if (!phy_receive_q[client].empty())
+	    if (!phy_receive_q[client].empty()){
 		event=1;
-	    else if (!dl_send_q[client].empty()){
+	    }
+	    else{
+		//cout<<"Nothing in queue"<<endl;
+	    }
+	    pthread_mutex_unlock( &mutex_phy_receive[client] );	
+	    pthread_mutex_lock( &mutex_dl_send[client] );
+	    if (!dl_send_q[client].empty()){
+		//cout<<"Event2";
 		event=2;
 		message_cutter(client);
+	    	pthread_mutex_unlock( &mutex_dl_send[client] );
 	    }
-	    else if (timeouts())//Need a timeout function
-		event=3;
-	    pthread_mutex_unlock( &mutex_phy_receive[client] );
+	    else{
+		//cout<<"Nothing in queue 2"<<endl;
+	    }
 	    pthread_mutex_unlock( &mutex_dl_send[client] );
-	    if(client_temp!=client)
-		cout<<"EEEERRRRRORRRRRRRRRRRRRRRRRRRRRR"<<endl;
+	    if (timeouts()){//Need a timeout function
+		//cout<<"Event3";	
+		event=3;
+	    }
+	    else{
+		//cout<<"No timeouts"<<endl;
+	    }
+	    //pthread_mutex_unlock( &mutex_phy_receive[client] );
+	    //pthread_mutex_unlock( &mutex_dl_send[client] );
+	    //if(client_temp!=client)
+	//	cout<<"EEEERRRRRORRRRRRRRRRRRRRRRRRRRRR"<<endl;
 	}
-
 	return event;
 }
 
@@ -369,7 +384,7 @@ frame deconstruct_frame(char *input){
 //Message Cutter
 int message_cutter(int client){
 
-        pthread_mutex_lock(&mutex_dl_send[client]);
+        //pthread_mutex_lock(&mutex_dl_send[client]);
         int i=dl_send_q[client].size();
         string message;
         string piece;
@@ -378,7 +393,9 @@ int message_cutter(int client){
                 message.clear();
                 message=dl_send_q[client].front();
                 dl_send_q[client].pop();
-                int number_of_pieces=(int)ceil(message.size()/BUFFER_SIZE);
+		//cout<<"Message Size:"<<message.size();
+                int number_of_pieces=(int)ceil((double)message.size()/(double)BUFFER_SIZE);
+		//cout<<"Number of pieces: "<<number_of_pieces<<endl;
                 for (int i=0;i<number_of_pieces;i++){
                         piece.clear();
                         if (i==(number_of_pieces-1)){
@@ -391,11 +408,12 @@ int message_cutter(int client){
                         else{
 				string str=message.substr(i*BUFFER_SIZE,(i+1)*BUFFER_SIZE);
                                 dl_send_q[client].push(str.append("\x88"));
-		}
+			}
                 }
 
         }
-        pthread_mutex_unlock(&mutex_dl_send[client]);
+        //pthread_mutex_unlock(&mutex_dl_send[client]);
+	//cout<<"Size after cutter: "<<dl_send_q[client].size()<<endl;
 
         return 0;
 }

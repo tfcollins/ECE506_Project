@@ -32,8 +32,10 @@ int main(int argc, char *argv[]){
 		//cout<<"Doing something, I hope (APP)"<<endl;
 		count++;
 		if (count==12){
-			//cout<<"Sending Message (APP)"<<endl;
-			//dl_send_q.push("Message from APP_Layer");
+			cout<<"Sending Message (APP)"<<endl;
+			pthread_mutex_lock(&mutex_dl_send[0]);
+			dl_send_q[0].push("Server");
+			pthread_mutex_unlock(&mutex_dl_send[0]);
 			continue;
 		}
 
