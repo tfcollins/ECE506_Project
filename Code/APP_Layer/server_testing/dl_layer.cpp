@@ -149,8 +149,18 @@ void *dl_layer_server(void *client_num){
 					pthread_mutex_lock(&mutex_prev_seq_num);
 					//cout<<"Message: "<<buffer.data<<"|"<<endl;
 					//cout<<"Prev Seq: "<<previous_frame_received[client]<<" Recvd Seq: "<<buffer.seq_NUM<<" Client: "<<client<<endl;
-					if (buffer.seq_NUM==((previous_frame_received[client]+1)%4)){
-						//cout<<"Correctly Ordered Frame"<<endl;
+					if ((buffer.seq_NUM==((previous_frame_received[client]+1)%4))||(buffer.seq_NUM==previous_frame_received[client])){
+						//Correctly Ordered Frame
+						//Duplicate	
+						if(buffer.seq_NUM==previous_frame_received[client]){
+						 	verbose("ERROR: Duplicate Message Received (DL)");
+                                                        pthread_mutex_lock(&mutex_phy_receive[client]);
+                                                        phy_receive_q[client].pop();
+                                                        pthread_mutex_unlock(&mutex_phy_receive[client]);
+							send_data(buffer.seq_NUM, 9, "ACK", 1, client);//Send ACK
+							break;
+						} 
+
 						previous_frame_received[client]=((previous_frame_received[client]+1)%4);
 						
 						pthread_mutex_lock(&mutex_dl_receive[client]);
@@ -164,7 +174,7 @@ void *dl_layer_server(void *client_num){
                                                 //check if endline character exists
                                                 for (int u=0;u<recv_temp_buff.size();u++)
                                                         if (recv_temp_buff[u]=='\?'){
-								verbose("Found Delimiter (DL)");
+								//verbose("Found Delimiter (DL)");
 								string str2 = recv_temp_buff.substr (0,recv_temp_buff.length()-1);
 								verbose("Resulting message: "+str2+" (DL)");
                                                                 dl_receive_q[client].push(str2);
@@ -181,7 +191,7 @@ void *dl_layer_server(void *client_num){
 						//cout<<"Sending ACK (DL)"<<endl;
 					}
 					else{//Drop Packet
-						verbose("Data Frame out order, dropping (DL)");
+						verbose("ERROR: Data Frame out order, dropping (DL)");
 						pthread_mutex_lock(&mutex_phy_receive[client]);
 						phy_receive_q[client].pop();
 						pthread_mutex_unlock(&mutex_phy_receive[client]);
@@ -222,7 +232,7 @@ void *dl_layer_server(void *client_num){
 				frame_to_send = ack_expected;
 				//Reset N Frames
 				if (queued==0){
-					cout<<"Timeout incorrect Queue Size"<<endl;
+					cout<<"ERROR: Timeout incorrect Queue Size"<<endl;
 					exit(1);
 				}
 				for (int i = 0; i < queued; i++){
@@ -332,7 +342,7 @@ int timeouts(void){
 	//Look at times
 	for (int i=0;i<queued;i++)
 		if ((current-timers[i])>TIMEOUT_MAX){
-			verbose("Timeout occured (DL)");
+			verbose("ERROR: Timeout occured (DL)");
 			return 1;//Timeout occured
 		}
 	return 0;//No timeouts

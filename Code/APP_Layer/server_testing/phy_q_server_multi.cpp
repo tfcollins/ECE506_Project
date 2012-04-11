@@ -34,7 +34,7 @@ typedef struct{
 //Main Physical Layer Thread (Accepts Connections)
 void *phy_layer_server(void *num){
 
-	verbose("Physical Active(PHY)");
+	verbose("Physical Active (PHY)");
 	//Setup Socket
         int sockfd, portno;
         socklen_t clilen;
@@ -42,7 +42,7 @@ void *phy_layer_server(void *num){
         struct sockaddr_in serv_addr, cli_addr;
         sockfd = socket(AF_INET, SOCK_STREAM, 0);
         if (sockfd < 0)
-                diewithError("ERROR opening socket");
+                diewithError("ERROR opening socket (PHY)");
         bzero((char *) &serv_addr, sizeof(serv_addr));
         portno = PORT;
 
@@ -51,7 +51,7 @@ void *phy_layer_server(void *num){
         serv_addr.sin_addr.s_addr = INADDR_ANY;
         serv_addr.sin_port = htons(portno);
         if (bind(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0)
-                diewithError("ERROR on binding");
+                diewithError("ERROR on binding (PHY)");
         listen(sockfd, 5);
         clilen = sizeof(cli_addr);
 
@@ -74,7 +74,7 @@ void *phy_layer_server(void *num){
 			int x;
 			x=fcntl(*socket[client],F_GETFL,0);
 			fcntl(*socket[client],F_SETFL,x | O_NONBLOCK);
-			if(*socket[client]==-1) diewithError("Could not connect to client (PHY)");
+			if(*socket[client]==-1) diewithError("ERROR: Could not connect to client (PHY)");
 			verbose("Socket Made non-blocking (PHY)");
 			
 			client_info[client].socket=socket[client];
@@ -132,7 +132,7 @@ void *phy_layer_t(void* num){
     int rc;
     rc = pthread_create(&dl_thread[client], NULL, dl_layer_server, &client);
     if (rc){
-    		diewithError("Data Link Layer Thread Failed to be created (PHY)");
+    		diewithError("ERROR: Data Link Layer Thread Failed to be created (PHY)");
     }
 
     //Wait to send or receive messages
@@ -140,7 +140,7 @@ void *phy_layer_t(void* num){
 
 	//Check if DL Layer thread is alive
 	if(pthread_kill(dl_thread[client], 0))
-		verbose("DL Thread died for client");		
+		verbose("ERROR: DL Thread died for client (PHY)");		
 
         FD_ZERO(&read_flags); // Zero the flags ready for using
         FD_ZERO(&write_flags);
@@ -191,7 +191,7 @@ void *phy_layer_t(void* num){
 				//cout<<"Correct CRC"<<endl;
 				}	
 				else{//Drop Packet
-					verbose("CRC Checksum Failed (PHY)");
+					verbose("ERROR: CRC Checksum Failed (PHY)");
 					continue;
 				}
 				pthread_mutex_lock( &mutex_phy_receive[client] );
@@ -226,7 +226,7 @@ void *phy_layer_t(void* num){
 
 		strcpy(outbuff,temp.c_str());
 
-		cout<<"Sending (PHY): "<<outbuff<<endl;
+		//cout<<"Sending (PHY): "<<outbuff<<endl;
 		pthread_mutex_lock( &mutex_phy_send[client] );
 		phy_send_q[client].pop();
 		pthread_mutex_unlock( &mutex_phy_send[client] );

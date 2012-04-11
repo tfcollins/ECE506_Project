@@ -141,9 +141,17 @@ void *dl_layer_client(void *num){
 				else{//Data Frame Received
 		
 					//Correct order in sequence
-					if (buffer.seq_NUM==(previous_frame_received+1)%4){
+					if ((buffer.seq_NUM==(previous_frame_received+1)%4)||(buffer.seq_NUM==previous_frame_received)){
+						//Duplicate
+                                                if(buffer.seq_NUM==previous_frame_received){
+							verbose("Duplicate Message Received (DL)");
+                                                	pthread_mutex_lock(&mutex_phy_receive);
+							phy_receive_q.pop();
+                                                	pthread_mutex_unlock(&mutex_phy_receive);
+                                                        send_data(buffer.seq_NUM, 9, "ACK", 1);//Send ACK
+                                                        break;
+                                                }
 						previous_frame_received=((previous_frame_received+1)%4);
-
 						pthread_mutex_lock(&mutex_phy_receive);
 						if (buffer.data[strlen(buffer.data)-1]=='\x88'){
 							string temp1=string(buffer.data);
