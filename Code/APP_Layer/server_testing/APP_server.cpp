@@ -147,15 +147,16 @@ void send_info(const int client_ID, const string &userin){
 	string to_users = "";
 	//Iterate through the database
 	for (list<user_entry>::const_iterator entry = database.begin(); entry != database.end(); entry++){
+	//	out<<"ENTRY: "<<entry->username<<endl;
 		if ((entry->username).compare(userin) == 0){
 			string ega = convertInt(entry->age);
 			to_users = "username:" + entry->username + " age:" + ega + " location:" + entry->location + " hobby:" + entry->hobby;
 			send_to_one(client_ID, to_users);
+			return;
 		}
-		else {
-			send_to_one(client_ID, "'what' request error: That user does not exist");
-		}
+		
 	}
+	send_to_one(client_ID, "'what' request error: That user does not exist");
 }
 
 //Send string to all connected clients
