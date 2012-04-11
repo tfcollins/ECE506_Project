@@ -5,7 +5,7 @@
 #include "all.h"
 #define DELIM " "
 
-int PORT = 8787;		/* Known port number */
+int PORT = 8383;		/* Known port number */
 char* HOSTNAME;
 int vb_mode=0;
 
@@ -65,7 +65,7 @@ int main(int argc, char *argv[]){
     pthread_mutex_unlock(&mutex_app_send);
 
 	//Wait for login confirmation
-	bool logged_in;
+	bool logged_in=0;
 	while (1) {
 		pthread_mutex_lock(&mutex_dl_receive);
 		if(!dl_receive_q.empty()){
@@ -86,8 +86,8 @@ int main(int argc, char *argv[]){
 				logged_in = true;
 				cout << "Welcome! Type 'help' for chatroom commands" << endl;
 			}
-			pthread_mutex_unlock(&mutex_dl_receive);
 		}
+		pthread_mutex_unlock(&mutex_dl_receive);
 
 		//Logged in
 		while (logged_in){
@@ -200,16 +200,17 @@ int count_words(char *str){
 void *recv_display(void *num){
 	verbose("\nStarted Recv_Display thread");
 	while(1){
+		pthread_mutex_lock(&mutex_dl_receive);
 		if(!dl_receive_q.empty()){
-			pthread_mutex_lock(&mutex_dl_receive);
+
 			string recvd = dl_receive_q.front();
 			dl_receive_q.pop();
-			pthread_mutex_unlock(&mutex_dl_receive);
 
 			cout << "\nMessage received from server!" << endl;
 			cout << "'" + recvd + "'" << endl;
-			cout << "Please continue...\nEnter input:";
+			cout << "Please continue...\nEnter input:" << endl;
 		}
+		pthread_mutex_unlock(&mutex_dl_receive);
 		//sleep(3);
 		//cout << "\nSmelly" << endl;
 	}
