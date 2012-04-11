@@ -226,6 +226,7 @@ void *phy_layer_t(void* num){
 
 		strcpy(outbuff,temp.c_str());
 
+		cout<<"Sending (PHY): "<<outbuff<<endl;
 		pthread_mutex_lock( &mutex_phy_send[client] );
 		phy_send_q[client].pop();
 		pthread_mutex_unlock( &mutex_phy_send[client] );

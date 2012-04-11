@@ -85,6 +85,7 @@ void *dl_layer_server(void *client_num){
 	int frame_to_send = 0;
 	int frame_expected = 0;
 	int ack_expected = 0;
+	int old_queued=0;
 	int rc;
 	frame buffer;
 	string recv_temp_buff;
@@ -193,6 +194,13 @@ void *dl_layer_server(void *client_num){
 
 			//If APP Layer wants to send message
 			case (APP):
+				if (queued >= MAX_SEQ){
+                                        if (old_queued!=queued){
+                                                verbose("Queue Maxed, must wait for ACK (DL)");
+                                                old_queued=queued;//Used to display messages only when queue changes in size
+                                        }
+                                        break;
+                                }
 				pthread_mutex_lock(&mutex_dl_send[client]);
 				data=dl_send_q[client].front();
 				dl_send_q[client].pop();
@@ -203,9 +211,10 @@ void *dl_layer_server(void *client_num){
 				pthread_mutex_unlock(&mutex_window_q[client]);
 				//Send buffer to physical layer
 				//Include seq number for packing
-				send_data(frame_to_send, frame_expected, data, 0, client);
-				frame_to_send++;
+				timers[queued]=current_time();
 				queued++;//cycle to next q
+				send_data(frame_to_send, frame_expected, data, 0, client);
+				frame_to_send=((frame_to_send+1)%4);
 				break;
 
 			//If No ACK received, and timeout
