@@ -87,7 +87,6 @@ void handle_client(int client_ID){
 		send_users();
 	}
 
-
 	verbose("Successfully Handled Client (APP)");
 	return;
 }

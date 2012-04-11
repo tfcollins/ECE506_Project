@@ -10,6 +10,7 @@ char* HOSTNAME;
 int vb_mode=0;
 
 using namespace std;
+
 void *recv_display(void *num);
 
 int main(int argc, char *argv[]){
@@ -58,15 +59,15 @@ int main(int argc, char *argv[]){
     }
 
 	//TO DATA LINK LAYER
-    cout<<"Sending Login (APP)"<<endl;
-    //pthread_mutex_lock(&mutex_app_send);
+    verbose("Sending Login (APP)");
+    pthread_mutex_lock(&mutex_app_send);
     dl_send_q.push(buffer);
-    //pthread_mutex_unlock(&mutex_app_send);
+    pthread_mutex_unlock(&mutex_app_send);
 
 	//Wait for login confirmation
 	bool logged_in;
 	while (1) {
-		//pthread_mutex_lock(&mutex_dl_receive);
+		pthread_mutex_lock(&mutex_dl_receive);
 		if(!dl_receive_q.empty()){
 			verbose("RECEIVE_Q NOT EMPTY (APP)");
 			string received;
