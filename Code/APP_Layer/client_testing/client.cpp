@@ -59,18 +59,19 @@ int main(int argc, char *argv[]){
 
 	//TO DATA LINK LAYER
     cout<<"Sending Login (APP)"<<endl;
-    pthread_mutex_lock(&mutex_app_send);
+    //pthread_mutex_lock(&mutex_app_send);
     dl_send_q.push(buffer);
-    pthread_mutex_unlock(&mutex_app_send);
+    //pthread_mutex_unlock(&mutex_app_send);
 
 	//Wait for login confirmation
 	bool logged_in;
 	while (1) {
-		pthread_mutex_lock(&mutex_dl_receive);
+		//pthread_mutex_lock(&mutex_dl_receive);
 		if(!dl_receive_q.empty()){
-			cout << "NOT EMPTYYYY" << endl;
+			verbose("RECEIVE_Q NOT EMPTY (APP)");
 			string received;
 			received = dl_receive_q.front();
+			verbose("RECEIVED '" + received + "' (APP)");
 			dl_receive_q.pop();
 
 			if (strcmp(received.c_str(), "loggedin") == 0){
@@ -134,8 +135,10 @@ int main(int argc, char *argv[]){
 				tosend = command + " " + message;
 			}
 			else if ((command.compare("logout") == 0) && (word == 1)){
-				go = true;
+				//go = true;
 				tosend = command;
+				//pthread_cancel(recv_thread);
+				exit(0);
 			}
 			else printhelp();
 
@@ -144,7 +147,7 @@ int main(int argc, char *argv[]){
 			if(go){
 				cout << "Sending '" << tosend << "' to server. (APP)" << endl;
 				//tosend = tosend + '\f';
-				cout<<"Sending Login (APP)"<<endl;
+				//cout<<"Sending Login (APP)"<<endl;
 				pthread_mutex_lock(&mutex_dl_send);
 				dl_send_q.push(tosend);
 				pthread_mutex_unlock(&mutex_dl_send);
@@ -152,8 +155,6 @@ int main(int argc, char *argv[]){
 			}
 		}
 	}
-
-
 	return 0;
 }
 
@@ -196,7 +197,7 @@ int count_words(char *str){
 
 //Additional thread that checks and displays messages to user
 void *recv_display(void *num){
-	cout << "\nStarted Recv_Display thread" << endl;
+	verbose("\nStarted Recv_Display thread");
 	while(1){
 		if(!dl_receive_q.empty()){
 			pthread_mutex_lock(&mutex_dl_receive);
