@@ -218,7 +218,11 @@ void split_up_message(string to_split){
 	}
 	tosend.clear();
 	tosend = to_split.substr((pieces-1)*MAX_BUFF, to_split.length());
+<<<<<<< HEAD
 	tosend = tosend + "\x89";
+=======
+	tosend = tosend + '\x87';
+>>>>>>> d3ee1df5925e4c006d7dcfea03bd71a81395bc6b
 	cout << tosend << endl;
 	dl_send_q.push(tosend);
 }

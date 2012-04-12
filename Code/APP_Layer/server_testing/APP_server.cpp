@@ -128,9 +128,17 @@ string get_string(const int client_ID){
 		string temp = "";
 		temp = dl_receive_q[client_ID].front();
 		dl_receive_q[client_ID].pop();
+<<<<<<< HEAD
 
 		if(temp.find("\x89") < 256){
 			temp.erase(temp.find("\x89"));
+=======
+		cout << "*&*&**&*&*&**&*&" + temp << endl;
+		if(temp.find('\x89')<256){
+			cout << "found itttttt: "<<temp.find('\x89') << endl;
+			temp.erase(temp.find('\x89'),1);
+			cout << temp<< endl;
+>>>>>>> d3ee1df5925e4c006d7dcfea03bd71a81395bc6b
 			str = str + temp;
 			return str;
 		}
