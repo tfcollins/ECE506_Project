@@ -23,10 +23,12 @@ static list<user_entry> database;
 //Function Prototypes
 void handle_client(int ID);
 bool add_entry(const int client_ID, const string &username, const int age, const string &location, const string &hobby);
+string return_username(const int ID);
 void send_users(void);
 void send_info(const int client_ID, const string &userin);
 void send_to_all(string tosend);
 void send_to_one(const int client_ID, string tosend);
+void add_to_history(string message);
 string convertInt(int number);
 
 using namespace std;
@@ -48,8 +50,6 @@ int main(int argc, char *argv[]){
             exit(1);
     }
 
-    //Assume initial client count is 0
-
     while(1){
     	for(int ID = 0; ID < clients; ID++){
     		pthread_mutex_lock(&mutex_dl_receive[ID]);
@@ -64,8 +64,24 @@ int main(int argc, char *argv[]){
 
 void handle_client(int client_ID){
 
-	string buff = dl_receive_q[client_ID].front();
-	dl_receive_q[client_ID].pop();
+	bool full=false;
+	string buff, temp;
+	while(!full){
+		temp.clear();
+		temp = dl_receive_q[client_ID].front();
+		dl_receive_q[client_ID].pop();
+		cout << temp << endl;
+
+		if (temp[temp.length()] == '\x97'){
+			//temp[loc] = "";
+			buff = buff + temp;
+			full = true;
+		}
+		else{
+			buff = buff + temp;
+		}
+	}
+	cout << buff << endl;
 
 	char recv_buff[MAX_LEN + 1] = {0};
 	strcpy(recv_buff, buff.c_str());
@@ -81,16 +97,19 @@ void handle_client(int client_ID){
 
 		if(!user || !loc || !age || !hobby) diewithError("Login failed");
 		if(!add_entry(client_ID, user, atoi(age), loc, hobby)) diewithError("Could not add Entry");
-		cout << "Sending 'loggedin' to client" << endl;
+		verbose("Sending Login (APP)");
+
 		pthread_mutex_lock(&mutex_dl_send[client_ID]);
 		dl_send_q[client_ID].push("loggedin");
 		pthread_mutex_unlock(&mutex_dl_send[client_ID]);
 	}
+
 	//Client wants to see who is online
-	if (strcmp(command,"who") == 0){
+	else if (strcmp(command,"who") == 0){
 		verbose("Received 'who' from client (APP)");
 		send_users();
 	}
+
 	//Client wants to send message to all other clients
 	else if (strcmp(command,"send") == 0){
 		verbose("Received 'send' from client (APP)");
@@ -102,8 +121,11 @@ void handle_client(int client_ID){
 			message = message + " " + command;
 			command = strtok(NULL, DELIM);
 		}
-		send_to_all(message);
+		string user = return_username(client_ID);
+		send_to_all(user + " said:" + message);
+		add_to_history(user + " said:" + message);
 	}
+
 	//Client wants to see user's profile info
 	else if (strcmp(command,"what") == 0){
 		verbose("Received 'what' from client (APP)");
@@ -142,12 +164,11 @@ void send_users(void){
 	send_to_all(to_users);
 }
 
-//Get and send user's information to all clients
+//Get and send user's information to requesting client
 void send_info(const int client_ID, const string &userin){
 	string to_users = "";
 	//Iterate through the database
 	for (list<user_entry>::const_iterator entry = database.begin(); entry != database.end(); entry++){
-	//	out<<"ENTRY: "<<entry->username<<endl;
 		if ((entry->username).compare(userin) == 0){
 			string ega = convertInt(entry->age);
 			to_users = "username:" + entry->username + " age:" + ega + " location:" + entry->location + " hobby:" + entry->hobby;
@@ -157,6 +178,16 @@ void send_info(const int client_ID, const string &userin){
 		
 	}
 	send_to_one(client_ID, "'what' request error: That user does not exist");
+}
+
+string return_username(const int ID){
+	string name = "";
+	for (list<user_entry>::const_iterator entry = database.begin(); entry != database.end(); entry++){
+		if (entry->client_ID == ID)
+			name = entry->username;
+	}
+
+	return name;
 }
 
 //Send string to all connected clients
@@ -176,6 +207,15 @@ void send_to_one(const int client_ID, string tosend){
 	pthread_mutex_unlock(&mutex_dl_send[client_ID]);
 
 	verbose("PUSHED" + tosend + " (APP)");
+}
+
+//Add chat history to file
+void add_to_history(string message){
+	ofstream history ("chat_history.txt", ios::app);
+	if (!history) diewithError("Failed to open chat_history.txt, re-build server!");
+
+	history << message + "\n";
+	history.close();
 }
 
 //Convert Integer to String

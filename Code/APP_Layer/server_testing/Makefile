@@ -3,4 +3,6 @@ dl_layer: dl_layer.cpp all.h
 
 dl_total: APP_server.cpp dl_layer.cpp phy_q_server_multi.cpp phy_setup.cpp all.h
 	g++ APP_server.cpp dl_layer.cpp all.h phy_q_server_multi.cpp phy_setup.cpp -lrt -lpthread -o dl_total
+	rm -f chat_history.txt
+	touch chat_history.txt
 

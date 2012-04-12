@@ -3,15 +3,20 @@
 
 //Client
 #include "all.h"
+#include <cmath>
+
 #define DELIM " "
+#define MAX_BUFF 256
 
 int PORT = 8383;		/* Known port number */
 char* HOSTNAME;
 int vb_mode=0;
 
-using namespace std;
-
+//Function Prototypes
 void *recv_display(void *num);
+void split_up_message(string to_split);
+
+using namespace std;
 
 int main(int argc, char *argv[]){
 
@@ -40,16 +45,15 @@ int main(int argc, char *argv[]){
 
 	//Build login and profile information buffer
 	string buffer;
-	buffer = "login " + username + " " + age + " " + location + " " + hobby;
+	buffer = "login " + username + " " + age + " " + location + " " + hobby + "\x97";
 
 	//Check if input longer than 256
-	//Eventually split up if larger than 256
-	if (buffer.size() > 256) diewithError("Greater than 256 bytes");
+	if (buffer.size() > 256) diewithError("Login must be less than 256 bytes!");
 
 	//Setup and connect to server
 	HOSTNAME = argv[1];
-	//if (HOSTNAME == NULL) diewithError("Error, no such host!");
 
+	//Start Data Link and Physical Layers
 	pthread_t dl_thread;
 	int rc;
     rc = pthread_create(&dl_thread, NULL, dl_layer_client, (void *) 1);
@@ -75,6 +79,7 @@ int main(int argc, char *argv[]){
 			verbose("RECEIVED '" + received + "' (APP)");
 			dl_receive_q.pop();
 
+			//Must be a confirmed login from server
 			if (strcmp(received.c_str(), "loggedin") == 0){
 				pthread_t recv_thread;
 				int rc = pthread_create(&recv_thread, NULL, recv_display, (void *) 1);
@@ -105,34 +110,36 @@ int main(int argc, char *argv[]){
 				message = message + input +" ";
 			}
 
-			//Determine if possible input
+			//Determine if possible input: Error Checking
 			char *buffin = &buffer[0];
 			int word = count_words(buffin);
 
 			//Verifies correct input, else prints help function
-			int go=0;
+			int lessthan=0;
+			int morethan=0;
 			if((command.compare("who") == 0) && (word == 1)){
-				go = true;
+				lessthan = true;
 				tosend = command;
 			}
 			else if ((command.compare("send") == 0) && (word >= 2)){
-				go = true;
 				tosend = command + " " + message;
+				if (tosend.size() > MAX_BUFF-1) morethan = true;
+				else lessthan = true;
 			}
 			else if ((command.compare("history") == 0) && (word == 1)){
-				go = true;
+				lessthan = true;
 				tosend = command;
 			}
 			else if ((command.compare("what") == 0) && (word == 2)){
-				go = true;
+				lessthan = true;
 				tosend = command + " " + message;
 			}
 			else if ((command.compare("upload") == 0) && (word == 2)){
-				go = true;
+				lessthan = true;
 				tosend = command + " " + message;
 			}
 			else if ((command.compare("get") == 0) && (word == 2)){
-				go = true;
+				lessthan = true;
 				tosend = command + " " + message;
 			}
 			else if ((command.compare("logout") == 0) && (word == 1)){
@@ -145,14 +152,15 @@ int main(int argc, char *argv[]){
 
 			//Sends to data link layer if input acceptable
 			//Will have to add additional sections, based on message size
-			if(go){
-				cout << "Sending '" << tosend << "' to server. (APP)" << endl;
-				//tosend = tosend + '\f';
-				//cout<<"Sending Login (APP)"<<endl;
+			if(lessthan){
+				verbose("Sending '" + tosend + "' to server. (APP)");
 				pthread_mutex_lock(&mutex_dl_send);
 				dl_send_q.push(tosend);
 				pthread_mutex_unlock(&mutex_dl_send);
 				tosend.clear();
+			}
+			if(morethan){
+				split_up_message(tosend);
 			}
 		}
 	}
@@ -194,6 +202,24 @@ int count_words(char *str){
 	}
 
 	return count;
+}
+
+void split_up_message(string to_split){
+	string tosend = "";
+
+	int pieces=(int)ceil((double)to_split.size()/(double)MAX_BUFF);
+
+	pthread_mutex_lock(&mutex_dl_send);
+	for(int i = 0; i < pieces -1; i++){
+		tosend.clear();
+		tosend = to_split.substr(i*MAX_BUFF,(i+1)*MAX_BUFF - 1);
+		dl_send_q.push(tosend);
+	}
+	tosend.clear();
+	tosend = to_split.substr((pieces-1)*MAX_BUFF, to_split.length());
+	tosend.append("\x97");
+	dl_send_q.push(tosend);
+	pthread_mutex_unlock(&mutex_dl_send);
 }
 
 //Additional thread that checks and displays messages to user

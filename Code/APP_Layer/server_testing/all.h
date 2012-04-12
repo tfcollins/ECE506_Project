@@ -21,6 +21,7 @@
 #include <deque>
 #include <time.h>
 #include <fcntl.h>
+#include <fstream>
 
 using namespace std;
 
