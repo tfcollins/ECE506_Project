@@ -8,7 +8,7 @@
 #define DELIM " "
 #define MAX_BUFF 256
 
-int PORT = 8383;		/* Known port number */
+int PORT = 9323;		/* Known port number */
 char* HOSTNAME;
 int vb_mode=0;
 
@@ -45,7 +45,7 @@ int main(int argc, char *argv[]){
 
 	//Build login and profile information buffer
 	string buffer;
-	buffer = "login " + username + " " + age + " " + location + " " + hobby + "\x97";
+	buffer = "login " + username + " " + age + " " + location + " " + hobby + "0x1f";
 
 	//Check if input longer than 256
 	if (buffer.size() > 256) diewithError("Login must be less than 256 bytes!");
@@ -155,7 +155,7 @@ int main(int argc, char *argv[]){
 			if(lessthan){
 				verbose("Sending '" + tosend + "' to server. (APP)");
 				pthread_mutex_lock(&mutex_dl_send);
-				dl_send_q.push(tosend);
+				dl_send_q.push(tosend + "0x1f");
 				pthread_mutex_unlock(&mutex_dl_send);
 				tosend.clear();
 			}
@@ -217,7 +217,8 @@ void split_up_message(string to_split){
 	}
 	tosend.clear();
 	tosend = to_split.substr((pieces-1)*MAX_BUFF, to_split.length());
-	tosend.append("\x97");
+	tosend = tosend + "0x1f";
+	cout << tosend << endl;
 	dl_send_q.push(tosend);
 	pthread_mutex_unlock(&mutex_dl_send);
 }

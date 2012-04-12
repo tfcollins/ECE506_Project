@@ -6,7 +6,7 @@
 #define DELIM " "
 #define MAX_LEN 256
 
-int PORT = 8383;		/* Known port number */
+int PORT = 9323;		/* Known port number */
 int vb_mode = 0;
 
 //User Entry
@@ -22,6 +22,7 @@ static list<user_entry> database;
 
 //Function Prototypes
 void handle_client(int ID);
+string get_string(const int client_ID);
 bool add_entry(const int client_ID, const string &username, const int age, const string &location, const string &hobby);
 string return_username(const int ID);
 void send_users(void);
@@ -54,7 +55,7 @@ int main(int argc, char *argv[]){
     	for(int ID = 0; ID < clients; ID++){
     		pthread_mutex_lock(&mutex_dl_receive[ID]);
     		if(!dl_receive_q[ID].empty()){
-    			verbose("Handling client APP)");
+    			verbose("Handling client (APP)");
     			handle_client(ID);
     		}
     		pthread_mutex_unlock(&mutex_dl_receive[ID]);
@@ -64,26 +65,9 @@ int main(int argc, char *argv[]){
 
 void handle_client(int client_ID){
 
-	bool full=false;
-	string buff, temp;
-	while(!full){
-		temp.clear();
-		temp = dl_receive_q[client_ID].front();
-		dl_receive_q[client_ID].pop();
-		cout << temp << endl;
+	string buff = get_string(client_ID);
 
-		if (temp[temp.length()] == '\x97'){
-			//temp[loc] = "";
-			buff = buff + temp;
-			full = true;
-		}
-		else{
-			buff = buff + temp;
-		}
-	}
-	cout << buff << endl;
-
-	char recv_buff[MAX_LEN + 1] = {0};
+	char recv_buff[MAX_LEN] = {0};
 	strcpy(recv_buff, buff.c_str());
 
 	//Tokenize the string, first word is the command
@@ -135,6 +119,29 @@ void handle_client(int client_ID){
 
 	verbose("Handled Client (APP)");
 	return;
+}
+
+string get_string(const int client_ID){
+	cout << "in get string" << endl;
+	string str = "";
+	bool done = false;
+	while(!done){
+		string temp = "";
+		temp = dl_receive_q[client_ID].front();
+		dl_receive_q[client_ID].pop();
+		cout << "*&*&**&*&*&**&*&" + temp << endl;
+		if(temp.find("0x1f")){
+			cout << "found itttttt" << endl;
+			//temp.erase(temp.find("0x1f"));
+			str = str + temp;
+			return str;
+		}
+		else{
+			str = str + temp;
+			cout << "STILL GOING*****" << endl;
+		}
+	}
+	return 0;
 }
 
 //Adding an entry to the database
