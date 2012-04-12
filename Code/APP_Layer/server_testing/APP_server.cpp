@@ -130,9 +130,10 @@ string get_string(const int client_ID){
 		temp = dl_receive_q[client_ID].front();
 		dl_receive_q[client_ID].pop();
 		cout << "*&*&**&*&*&**&*&" + temp << endl;
-		if(temp.find("0x1f")){
-			cout << "found itttttt" << endl;
-			//temp.erase(temp.find("0x1f"));
+		if(temp.find('\x89')<256){
+			cout << "found itttttt: "<<temp.find('\x89') << endl;
+			temp.erase(temp.find('\x89'),1);
+			cout << temp<< endl;
 			str = str + temp;
 			return str;
 		}
