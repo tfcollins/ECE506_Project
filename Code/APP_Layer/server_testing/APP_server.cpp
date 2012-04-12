@@ -6,7 +6,7 @@
 #define DELIM " "
 #define MAX_LEN 256
 
-int PORT = 9323;		/* Known port number */
+int PORT = 9344;		/* Known port number */
 int vb_mode = 0;
 
 //User Entry
@@ -120,25 +120,22 @@ void handle_client(int client_ID){
 	verbose("Handled Client (APP)");
 	return;
 }
-
+//Helper function to get messages from DL_Layer
+//Received in 256 byte chunks
 string get_string(const int client_ID){
-	cout << "in get string" << endl;
 	string str = "";
-	bool done = false;
-	while(!done){
+	while(1){
 		string temp = "";
 		temp = dl_receive_q[client_ID].front();
 		dl_receive_q[client_ID].pop();
-		cout << "*&*&**&*&*&**&*&" + temp << endl;
-		if(temp.find("0x1f")){
-			cout << "found itttttt" << endl;
-			//temp.erase(temp.find("0x1f"));
+
+		if(temp.find("\x89") < 256){
+			temp.erase(temp.find("\x89"));
 			str = str + temp;
 			return str;
 		}
 		else{
 			str = str + temp;
-			cout << "STILL GOING*****" << endl;
 		}
 	}
 	return 0;

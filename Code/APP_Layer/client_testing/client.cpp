@@ -8,7 +8,7 @@
 #define DELIM " "
 #define MAX_BUFF 256
 
-int PORT = 9323;		/* Known port number */
+int PORT = 9344;		/* Known port number */
 char* HOSTNAME;
 int vb_mode=0;
 
@@ -45,7 +45,7 @@ int main(int argc, char *argv[]){
 
 	//Build login and profile information buffer
 	string buffer;
-	buffer = "login " + username + " " + age + " " + location + " " + hobby + "0x1f";
+	buffer = "login " + username + " " + age + " " + location + " " + hobby + "\x89";
 
 	//Check if input longer than 256
 	if (buffer.size() > 256) diewithError("Login must be less than 256 bytes!");
@@ -143,7 +143,7 @@ int main(int argc, char *argv[]){
 				tosend = command + " " + message;
 			}
 			else if ((command.compare("logout") == 0) && (word == 1)){
-				//go = true;
+				lessthan = true;
 				tosend = command;
 				//pthread_cancel(recv_thread);
 				exit(0);
@@ -155,12 +155,14 @@ int main(int argc, char *argv[]){
 			if(lessthan){
 				verbose("Sending '" + tosend + "' to server. (APP)");
 				pthread_mutex_lock(&mutex_dl_send);
-				dl_send_q.push(tosend + "0x1f");
+				dl_send_q.push(tosend + "\x89");
 				pthread_mutex_unlock(&mutex_dl_send);
 				tosend.clear();
 			}
 			if(morethan){
+				pthread_mutex_lock(&mutex_dl_send);
 				split_up_message(tosend);
+				pthread_mutex_unlock(&mutex_dl_send);
 			}
 		}
 	}
@@ -205,22 +207,20 @@ int count_words(char *str){
 }
 
 void split_up_message(string to_split){
+
+	verbose("File being split, over 256 bytes (APP)");
 	string tosend = "";
-
 	int pieces=(int)ceil((double)to_split.size()/(double)MAX_BUFF);
-
-	pthread_mutex_lock(&mutex_dl_send);
-	for(int i = 0; i < pieces -1; i++){
+	for(int i = 0; i < pieces - 1; i++){
 		tosend.clear();
 		tosend = to_split.substr(i*MAX_BUFF,(i+1)*MAX_BUFF - 1);
 		dl_send_q.push(tosend);
 	}
 	tosend.clear();
 	tosend = to_split.substr((pieces-1)*MAX_BUFF, to_split.length());
-	tosend = tosend + "0x1f";
+	tosend = tosend + "\x89";
 	cout << tosend << endl;
 	dl_send_q.push(tosend);
-	pthread_mutex_unlock(&mutex_dl_send);
 }
 
 //Additional thread that checks and displays messages to user
