@@ -6,7 +6,7 @@
 #define DELIM " "
 #define MAX_LEN 256
 
-int PORT = 9211;		/* Known port number */
+int PORT = 9218;		/* Known port number */
 int vb_mode = 0;
 
 //User Entry
@@ -140,6 +140,7 @@ string get_string(const int client_ID){
 			temp.erase(temp.find('\x89'),1);
 			str = str + temp;
 			return str;
+			cout << str << endl;
 		}
 		else{
 			str = str + temp;
@@ -165,7 +166,9 @@ bool add_entry(const int client_ID, const string &username, const int age, const
 void db_remove(const int id){
 	for (list<user_entry>::iterator entry = database.begin(); entry != database.end(); entry++){
 		if (entry->client_ID == id){
+			cout << "found ittttt" << endl;
 			database.erase(entry);
+			return;
 		}
 	}
 }
@@ -216,7 +219,7 @@ void send_to_all(string tosend){
 		dl_send_q[i].push(tosend);
 		pthread_mutex_unlock(&mutex_dl_send[i]);
 	}
-	verbose("PUSHED" + tosend + " (APP)");
+	verbose("PUSHED " + tosend + " (APP)");
 }
 
 //Send string to one connected client
@@ -225,7 +228,7 @@ void send_to_one(const int client_ID, string tosend){
 	dl_send_q[client_ID].push(tosend);
 	pthread_mutex_unlock(&mutex_dl_send[client_ID]);
 
-	verbose("PUSHED" + tosend + " (APP)");
+	verbose("PUSHED " + tosend + " (APP)");
 }
 
 //Add chat history to file

@@ -8,7 +8,7 @@
 #define DELIM " "
 #define MAX_BUFF 256
 
-int PORT = 9211;		/* Known port number */
+int PORT = 9218;		/* Known port number */
 char* HOSTNAME;
 int vb_mode=0;
 
@@ -117,6 +117,8 @@ int main(int argc, char *argv[]){
 			//Verifies correct input, else prints help function
 			int lessthan=0;
 			int morethan=0;
+			int logout=0;
+
 			if((command.compare("who") == 0) && (word == 1)){
 				lessthan = true;
 				tosend = command;
@@ -143,10 +145,9 @@ int main(int argc, char *argv[]){
 				tosend = command + " " + message;
 			}
 			else if ((command.compare("logout") == 0) && (word == 1)){
-				lessthan = true;
+				logout = true;
 				tosend = command;
 				//pthread_cancel(recv_thread);
-				exit(0);
 			}
 			else printhelp();
 
@@ -163,6 +164,15 @@ int main(int argc, char *argv[]){
 				pthread_mutex_lock(&mutex_dl_send);
 				split_up_message(tosend);
 				pthread_mutex_unlock(&mutex_dl_send);
+			}
+			if(logout){
+				pthread_mutex_lock(&mutex_dl_send);
+				dl_send_q.push(tosend + "\x89");
+				pthread_mutex_unlock(&mutex_dl_send);
+				sleep(1);
+				pthread_cancel(dl_thread);
+				exit(0);
+
 			}
 		}
 	}

@@ -2,7 +2,7 @@ To do:
 
 APP Layer:
 -Message cutting on server
--Logout command (remove from server DB)
+-Logout command (remove from server DB). Done -> Test a little more
 -File transfer
 -Commands: upload, get, logout
 -Check/fix server response messages to multiple clients.
