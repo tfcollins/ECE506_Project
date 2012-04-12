@@ -1,6 +1,11 @@
 To do:
 
 APP Layer:
+-Message cutting on server
+-Logout command (remove from server DB)
+-File transfer
+-Commands: upload, get, logout
+-Check/fix server response messages to multiple clients.
 
 DL Layer:
 -Create debug messaging mode
