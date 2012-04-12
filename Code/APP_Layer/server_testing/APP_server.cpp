@@ -6,7 +6,7 @@
 #define DELIM " "
 #define MAX_LEN 256
 
-int PORT = 9344;		/* Known port number */
+int PORT = 9211;		/* Known port number */
 int vb_mode = 0;
 
 //User Entry
@@ -24,6 +24,7 @@ static list<user_entry> database;
 void handle_client(int ID);
 string get_string(const int client_ID);
 bool add_entry(const int client_ID, const string &username, const int age, const string &location, const string &hobby);
+void db_remove(const int id);
 string return_username(const int ID);
 void send_users(void);
 void send_info(const int client_ID, const string &userin);
@@ -117,6 +118,12 @@ void handle_client(int client_ID){
 		send_info(client_ID,name);
 	}
 
+	//Client wants to logout
+	else if (strcmp(command,"logout") == 0){
+		verbose("Received logout");
+		db_remove(client_ID);
+	}
+
 	verbose("Handled Client (APP)");
 	return;
 }
@@ -128,17 +135,9 @@ string get_string(const int client_ID){
 		string temp = "";
 		temp = dl_receive_q[client_ID].front();
 		dl_receive_q[client_ID].pop();
-<<<<<<< HEAD
 
 		if(temp.find("\x89") < 256){
-			temp.erase(temp.find("\x89"));
-=======
-		cout << "*&*&**&*&*&**&*&" + temp << endl;
-		if(temp.find('\x89')<256){
-			cout << "found itttttt: "<<temp.find('\x89') << endl;
 			temp.erase(temp.find('\x89'),1);
-			cout << temp<< endl;
->>>>>>> d3ee1df5925e4c006d7dcfea03bd71a81395bc6b
 			str = str + temp;
 			return str;
 		}
@@ -161,6 +160,14 @@ bool add_entry(const int client_ID, const string &username, const int age, const
     database.push_back(entry);
 
     return true;
+}
+
+void db_remove(const int id){
+	for (list<user_entry>::iterator entry = database.begin(); entry != database.end(); entry++){
+		if (entry->client_ID == id){
+			database.erase(entry);
+		}
+	}
 }
 
 //Get and send all users in database to all clients

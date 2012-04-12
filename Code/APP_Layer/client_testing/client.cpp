@@ -8,7 +8,7 @@
 #define DELIM " "
 #define MAX_BUFF 256
 
-int PORT = 9344;		/* Known port number */
+int PORT = 9211;		/* Known port number */
 char* HOSTNAME;
 int vb_mode=0;
 
@@ -62,7 +62,7 @@ int main(int argc, char *argv[]){
         exit(1);
     }
 
-	//TO DATA LINK LAYER
+	//Send Login buffer
     verbose("Sending Login (APP)");
     pthread_mutex_lock(&mutex_app_send);
     dl_send_q.push(buffer);
@@ -73,7 +73,6 @@ int main(int argc, char *argv[]){
 	while (1) {
 		pthread_mutex_lock(&mutex_dl_receive);
 		if(!dl_receive_q.empty()){
-			verbose("RECEIVE_Q NOT EMPTY (APP)");
 			string received;
 			received = dl_receive_q.front();
 			verbose("RECEIVED '" + received + "' (APP)");
@@ -81,6 +80,7 @@ int main(int argc, char *argv[]){
 
 			//Must be a confirmed login from server
 			if (strcmp(received.c_str(), "loggedin") == 0){
+				//Start user display thread
 				pthread_t recv_thread;
 				int rc = pthread_create(&recv_thread, NULL, recv_display, (void *) 1);
 				if (rc){
@@ -218,12 +218,7 @@ void split_up_message(string to_split){
 	}
 	tosend.clear();
 	tosend = to_split.substr((pieces-1)*MAX_BUFF, to_split.length());
-<<<<<<< HEAD
 	tosend = tosend + "\x89";
-=======
-	tosend = tosend + '\x87';
->>>>>>> d3ee1df5925e4c006d7dcfea03bd71a81395bc6b
-	cout << tosend << endl;
 	dl_send_q.push(tosend);
 }
 
