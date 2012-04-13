@@ -2,11 +2,12 @@
 //JES
 
 #include "all.h"
+#include <cmath>
 
 #define DELIM " "
-#define MAX_LEN 256
+#define MAX_BUFF 255
 
-int PORT = 9218;		/* Known port number */
+int PORT = 8782;		/* Known port number */
 int vb_mode = 0;
 
 //User Entry
@@ -17,20 +18,24 @@ struct user_entry{
 	string location;
 	string hobby;
 };
-//Database of Users
+//Database of User Entries
 static list<user_entry> database;
 
 //Function Prototypes
 void handle_client(int ID);
 string get_string(const int client_ID);
 bool add_entry(const int client_ID, const string &username, const int age, const string &location, const string &hobby);
+bool name_check(const string name, const int client_ID);
 void db_remove(const int id);
 string return_username(const int ID);
-void send_users(void);
+void send_users(const int client_ID);
 void send_info(const int client_ID, const string &userin);
+void split_send_all(string tosplit);
+void split_send_one(const int client_ID, string to_split);
 void send_to_all(string tosend);
 void send_to_one(const int client_ID, string tosend);
 void add_to_history(string message);
+void send_history(const int client_ID);
 string convertInt(int number);
 
 using namespace std;
@@ -53,6 +58,7 @@ int main(int argc, char *argv[]){
     }
 
     while(1){
+    	//Monitor queues for connected clients, Handle Client when queue not empty
     	for(int ID = 0; ID < clients; ID++){
     		pthread_mutex_lock(&mutex_dl_receive[ID]);
     		if(!dl_receive_q[ID].empty()){
@@ -64,35 +70,36 @@ int main(int argc, char *argv[]){
     }
 }
 
+//Handles each client based on queue
 void handle_client(int client_ID){
 
 	string buff = get_string(client_ID);
-
-	char recv_buff[MAX_LEN] = {0};
+	char recv_buff[MAX_BUFF] = {0};
 	strcpy(recv_buff, buff.c_str());
 
 	//Tokenize the string, first word is the command
 	const char * command = strtok(recv_buff, DELIM);
-	//If command is login, add to DB and send successful login to client
+	//If command is login, try to add user to DB
 	if (strcmp(command, "login") == 0){
 		char * user = strtok(NULL, DELIM);
 		char * age = strtok(NULL, DELIM);
 		char * loc = strtok(NULL, DELIM);
 		char * hobby = strtok(NULL, DELIM);
 
-		if(!user || !loc || !age || !hobby) diewithError("Login failed");
-		if(!add_entry(client_ID, user, atoi(age), loc, hobby)) diewithError("Could not add Entry");
-		verbose("Sending Login (APP)");
-
-		pthread_mutex_lock(&mutex_dl_send[client_ID]);
-		dl_send_q[client_ID].push("loggedin");
-		pthread_mutex_unlock(&mutex_dl_send[client_ID]);
+		if(!user || !loc || !age || !hobby) diewithError("Something went wrong");
+		//If username already exists
+		if(!add_entry(client_ID, user, atoi(age), loc, hobby)) verbose("Username Exists! (APP)");
+		//If not, send logged in to client
+		else {
+			verbose("Sending Login (APP)");
+			send_to_one(client_ID,"loggedin");
+		}
 	}
 
 	//Client wants to see who is online
 	else if (strcmp(command,"who") == 0){
 		verbose("Received 'who' from client (APP)");
-		send_users();
+		send_users(client_ID);
 	}
 
 	//Client wants to send message to all other clients
@@ -100,15 +107,25 @@ void handle_client(int client_ID){
 		verbose("Received 'send' from client (APP)");
 		string message = "";
 
-		//remove 'send' for copying
+		//Prepare message to be sent to all clients
 		command = strtok(NULL, DELIM);
 		while (command != NULL){
 			message = message + " " + command;
 			command = strtok(NULL, DELIM);
 		}
 		string user = return_username(client_ID);
-		send_to_all(user + " said:" + message);
+		string tosend = user + " said:" + message;
 		add_to_history(user + " said:" + message);
+
+		//If message sent over MAX_BUFF, send to split, else send.
+		if (tosend.size() > MAX_BUFF-1) split_send_all(tosend);
+		else send_to_all(tosend);
+	}
+
+	//Client wants chat_history.txt
+	else if (strcmp(command, "history") == 0){
+		verbose("Received 'history' from client (APP)");
+		send_history(client_ID);
 	}
 
 	//Client wants to see user's profile info
@@ -118,34 +135,36 @@ void handle_client(int client_ID){
 		send_info(client_ID,name);
 	}
 
-	//Client wants to logout
+	//Client wants to logout, remove from DB
 	else if (strcmp(command,"logout") == 0){
 		verbose("Received logout");
 		db_remove(client_ID);
 	}
 
+	//Successfully handled Client
 	verbose("Handled Client (APP)");
 	return;
 }
-//Helper function to get messages from DL_Layer
-//Received in 256 byte chunks
+
+//Returns concatenated string when getting message from DL Layer
 string get_string(const int client_ID){
 	string str = "";
 	while(1){
 		string temp = "";
 		temp = dl_receive_q[client_ID].front();
 		dl_receive_q[client_ID].pop();
-
+		//Find the DELIM and erase it, return full string
 		if(temp.find("\x89") < 256){
 			temp.erase(temp.find('\x89'),1);
 			str = str + temp;
 			return str;
-			cout << str << endl;
 		}
+		//If not in this message, concatenate
 		else{
 			str = str + temp;
 		}
 	}
+	//Never gets here
 	return 0;
 }
 
@@ -153,28 +172,42 @@ string get_string(const int client_ID){
 bool add_entry(const int client_ID, const string &username, const int age, const string &location, const string &hobby){
 
     //Check if username exists
-    //if (get_entry(username))
-        //return false;
+    if (!name_check(username, client_ID))
+        return false;
 
     //Create a database entry and add to DB
     user_entry entry = {client_ID, username, age, location, hobby};
     database.push_back(entry);
+    verbose("Added " + username + " to server DB (APP)");
 
     return true;
 }
 
+//Check if name exists in the database
+bool name_check(const string name, const int client_ID){
+	for (list<user_entry>::iterator entry = database.begin(); entry != database.end(); entry++){
+		if ((strcmp(entry->username.c_str(), name.c_str())) == 0){
+			string tosend = "ERROR! Username already exists.";
+			send_to_one(client_ID, tosend);
+			return false;
+		}
+	}
+	return true;
+}
+
+//Removes entry from the database
 void db_remove(const int id){
 	for (list<user_entry>::iterator entry = database.begin(); entry != database.end(); entry++){
 		if (entry->client_ID == id){
-			cout << "found ittttt" << endl;
+			verbose("Removed " + entry->username + " from server DB (APP)");
 			database.erase(entry);
 			return;
 		}
 	}
 }
 
-//Get and send all users in database to all clients
-void send_users(void){
+//Get and send all users in database to requesting client
+void send_users(const int client_ID){
 	string to_users = "";
 	//Iterate through the database
 	for (list<user_entry>::const_iterator entry = database.begin(); entry != database.end(); entry++){
@@ -183,7 +216,9 @@ void send_users(void){
 		}
 		else to_users = to_users + "\n" + entry->username;
 	}
-	send_to_all(to_users);
+	//If message needs to be split, else send to client
+	if (to_users.size() > MAX_BUFF-1) split_send_one(client_ID, to_users);
+	else send_to_one(client_ID, to_users);
 }
 
 //Get and send user's information to requesting client
@@ -194,41 +229,85 @@ void send_info(const int client_ID, const string &userin){
 		if ((entry->username).compare(userin) == 0){
 			string ega = convertInt(entry->age);
 			to_users = "username:" + entry->username + " age:" + ega + " location:" + entry->location + " hobby:" + entry->hobby;
-			send_to_one(client_ID, to_users);
+
+			//If message needs to be split, else send to client
+			if (to_users.size() > MAX_BUFF-1) split_send_one(client_ID, to_users);
+			else send_to_one(client_ID, to_users);
+
 			return;
 		}
-		
 	}
+	//If user does not exist in the server DB, return this to requesting client
 	send_to_one(client_ID, "'what' request error: That user does not exist");
 }
 
+//Find the username of the requesting client_ID
 string return_username(const int ID){
 	string name = "";
 	for (list<user_entry>::const_iterator entry = database.begin(); entry != database.end(); entry++){
 		if (entry->client_ID == ID)
 			name = entry->username;
 	}
-
 	return name;
+}
+
+//Split up message over 256 bytes, and send to all clients
+void split_send_all(string to_split){
+
+	verbose("File being split, over 256 bytes (APP)");
+	string tosend = "";
+	int pieces=(int)ceil((double)to_split.size()/(double)MAX_BUFF);
+
+	for(int i = 0; i < pieces - 1; i++){
+		tosend.clear();
+		tosend = to_split.substr(i*MAX_BUFF,(i+1)*MAX_BUFF - 1);
+		send_to_all(tosend);
+	}
+		tosend.clear();
+		tosend = to_split.substr((pieces-1)*MAX_BUFF, to_split.length());
+		tosend = tosend + "\x89";
+		send_to_all(tosend);
+}
+
+//Split up messages over 256 bytes, and send to one requesting client
+void split_send_one(const int client_ID, string to_split){
+
+	verbose("File being split, over 256 bytes (APP)");
+	string tosend = "";
+	int pieces=(int)ceil((double)to_split.size()/(double)MAX_BUFF);
+
+	for(int i = 0; i < pieces - 1; i++){
+		tosend.clear();
+		tosend = to_split.substr(i*MAX_BUFF,(i+1)*MAX_BUFF - 1);
+		send_to_one(client_ID, tosend);
+	}
+		tosend.clear();
+		tosend = to_split.substr((pieces-1)*MAX_BUFF, to_split.length());
+		tosend = tosend + "\x89";
+		send_to_one(client_ID,tosend);
 }
 
 //Send string to all connected clients
 void send_to_all(string tosend){
-	for(int i = 0; i < clients; i++){
-		pthread_mutex_lock(&mutex_dl_send[i]);
-		dl_send_q[i].push(tosend);
-		pthread_mutex_unlock(&mutex_dl_send[i]);
+	tosend = tosend + "\x89";
+	int cnt = 0;
+	for (list<user_entry>::const_iterator entry = database.begin(); entry != database.end(); entry++){
+		cnt = entry->client_ID;
+		pthread_mutex_lock(&mutex_dl_send[cnt]);
+		dl_send_q[cnt].push(tosend);
+		pthread_mutex_unlock(&mutex_dl_send[cnt]);
 	}
-	verbose("PUSHED " + tosend + " (APP)");
+	verbose("PUSHED " + tosend + " to all (APP)");
 }
 
-//Send string to one connected client
+//Send string to one requesting client
 void send_to_one(const int client_ID, string tosend){
+	tosend = tosend + "\x89";
 	pthread_mutex_lock(&mutex_dl_send[client_ID]);
 	dl_send_q[client_ID].push(tosend);
 	pthread_mutex_unlock(&mutex_dl_send[client_ID]);
 
-	verbose("PUSHED " + tosend + " (APP)");
+	verbose("PUSHED " + tosend + " to one (APP)");
 }
 
 //Add chat history to file
@@ -238,6 +317,18 @@ void add_to_history(string message){
 
 	history << message + "\n";
 	history.close();
+}
+
+//History file transfer
+void send_history(const int client_ID){
+	ofstream history ("chat_history.txt");
+
+	if (!history) diewithError("Failed to open chat_history.txt, re-build server!");
+	//Do shit with the file.
+	//send_to_one(client_ID);
+
+	cout << "THIS IS NOT WORKING YET" << endl;;
+
 }
 
 //Convert Integer to String

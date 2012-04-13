@@ -8,7 +8,7 @@
 #define DELIM " "
 #define MAX_BUFF 256
 
-int PORT = 9218;		/* Known port number */
+int PORT = 8782;		/* Known port number */
 char* HOSTNAME;
 int vb_mode=0;
 int writing=0;
@@ -17,7 +17,11 @@ pthread_mutex_t mutex_file_recv = PTHREAD_MUTEX_INITIALIZER;
 
 //Function Prototypes
 void *recv_display(void *num);
+void send_dl(string message);
+string get_string(void);
 void split_up_message(string to_split);
+void send_file(string name);
+void receive_file(string name);
 
 using namespace std;
 
@@ -50,9 +54,6 @@ int main(int argc, char *argv[]){
 	string buffer;
 	buffer = "login " + username + " " + age + " " + location + " " + hobby + "\x89";
 
-	//Check if input longer than 256
-	if (buffer.size() > 256) diewithError("Login must be less than 256 bytes!");
-
 	//Setup and connect to server
 	HOSTNAME = argv[1];
 
@@ -67,9 +68,10 @@ int main(int argc, char *argv[]){
 
 	//Send Login buffer
     verbose("Sending Login (APP)");
-    pthread_mutex_lock(&mutex_app_send);
-    dl_send_q.push(buffer);
-    pthread_mutex_unlock(&mutex_app_send);
+    if (buffer.size() > 256) split_up_message(buffer);
+    else{
+    	send_dl(buffer);
+    }
 
 	//Wait for login confirmation
 	bool logged_in=0;
@@ -77,9 +79,8 @@ int main(int argc, char *argv[]){
 		pthread_mutex_lock(&mutex_dl_receive);
 		if(!dl_receive_q.empty()){
 			string received;
-			received = dl_receive_q.front();
+			received = get_string();
 			verbose("RECEIVED '" + received + "' (APP)");
-			dl_receive_q.pop();
 
 			//Must be a confirmed login from server
 			if (strcmp(received.c_str(), "loggedin") == 0){
@@ -93,6 +94,13 @@ int main(int argc, char *argv[]){
 
 				logged_in = true;
 				cout << "Welcome! Type 'help' for chatroom commands" << endl;
+			}
+			//Error message from server, username already exists, Login again.
+			if (strcmp(received.c_str(),"ERROR! Username already exists.") == 0){
+				cout << "Username already exists! Please try again." << endl;
+				sleep(3);
+				pthread_cancel(dl_thread);
+				exit(1);
 			}
 		}
 		pthread_mutex_unlock(&mutex_dl_receive);
@@ -117,11 +125,13 @@ int main(int argc, char *argv[]){
 			char *buffin = &buffer[0];
 			int word = count_words(buffin);
 
-			//Verifies correct input, else prints help function
-			int lessthan=0;
-			int morethan=0;
-			int logout=0;
+			string filename;
+			//flags for flow control
+			int lessthan=0; int morethan=0;
+			int upload = 0; int get = 0; int logout=0;
 
+			//Verifies correct input, else prints help function
+			//Sets up message handling flow
 			if((command.compare("who") == 0) && (word == 1)){
 				lessthan = true;
 				tosend = command;
@@ -141,11 +151,13 @@ int main(int argc, char *argv[]){
 			}
 			else if ((command.compare("upload") == 0) && (word == 2)){
 				lessthan = true;
+				filename = message;
 				tosend = command + " " + message;
 			}
 			else if ((command.compare("get") == 0) && (word == 2)){
 				writing=1;//enable writing
 				lessthan = true;
+				filename = message;
 				tosend = command + " " + message;
 			}
 			else if ((command.compare("logout") == 0) && (word == 1)){
@@ -155,39 +167,66 @@ int main(int argc, char *argv[]){
 			}
 			else printhelp();
 
-			//Sends to data link layer if input acceptable
-			//Will have to add additional sections, based on message size
+			//Sends to data link layer based on flows from above
+			//If no message splitting
 			if(lessthan){
 				verbose("Sending '" + tosend + "' to server. (APP)");
-				pthread_mutex_lock(&mutex_dl_send);
-				dl_send_q.push(tosend + "\x89");
-				pthread_mutex_unlock(&mutex_dl_send);
+				tosend = tosend + "\x89";
+				send_dl(tosend);
 				tosend.clear();
 			}
-			if(morethan){
-				pthread_mutex_lock(&mutex_dl_send);
+			//If message splitting
+			else if(morethan){
 				split_up_message(tosend);
-				pthread_mutex_unlock(&mutex_dl_send);
 			}
-			if(logout){
-				pthread_mutex_lock(&mutex_dl_send);
-				dl_send_q.push(tosend + "\x89");
-				pthread_mutex_unlock(&mutex_dl_send);
-				sleep(1);
+			//If logout
+			else if(logout){
+				tosend = tosend + "\x89";
+				send_dl(tosend);
+				sleep(3);
 				pthread_cancel(dl_thread);
 				exit(0);
-
 			}
 		}
 	}
 	return 0;
 }
 
+//Basic diewithError Function
 void diewithError(string message) {
         cout << message << endl;
         exit(1);
 }
 
+//Send string to DL
+void send_dl(string message){
+	pthread_mutex_lock(&mutex_dl_send);
+	dl_send_q.push(message);
+	pthread_mutex_unlock(&mutex_dl_send);
+}
+
+//Split message and send to DL Layer
+void split_up_message(string to_split){
+
+	pthread_mutex_lock(&mutex_dl_send);
+
+	verbose("File being split, over 256 bytes (APP)");
+	string tosend = "";
+	int pieces=(int)ceil((double)to_split.size()/(double)MAX_BUFF);
+	for(int i = 0; i < pieces - 1; i++){
+		tosend.clear();
+		tosend = to_split.substr(i*MAX_BUFF,(i+1)*MAX_BUFF - 1);
+		dl_send_q.push(tosend);
+	}
+	tosend.clear();
+	tosend = to_split.substr((pieces-1)*MAX_BUFF, to_split.length());
+	tosend = tosend + "\x89";
+	dl_send_q.push(tosend);
+
+	pthread_mutex_unlock(&mutex_dl_send);
+}
+
+//Help Function for UI
 void printhelp(void){
 	cout << "***************************" << endl;
 	cout << "Possible commands and usage:" << endl;
@@ -208,6 +247,7 @@ void printhelp(void){
 	cout << "***************************" << endl;
 }
 
+//Used for error checking, returns number of STD inputs
 int count_words(char *str){
 
 	int count=0;
@@ -220,31 +260,37 @@ int count_words(char *str){
 	return count;
 }
 
-void split_up_message(string to_split){
-
-	verbose("File being split, over 256 bytes (APP)");
-	string tosend = "";
-	int pieces=(int)ceil((double)to_split.size()/(double)MAX_BUFF);
-	for(int i = 0; i < pieces - 1; i++){
-		tosend.clear();
-		tosend = to_split.substr(i*MAX_BUFF,(i+1)*MAX_BUFF - 1);
-		dl_send_q.push(tosend);
+//Returns concatenated string when getting message from DL Layer
+string get_string(void){
+	string str = "";
+	while(1){
+		string temp = "";
+		temp = dl_receive_q.front();
+		dl_receive_q.pop();
+		//Find the DELIM and erase it, return full string
+		if(temp.find("\x89") < 256){
+			temp.erase(temp.find('\x89'),1);
+			str = str + temp;
+			return str;
+		}
+		//If not in this message, concatenate
+		else{
+			str = str + temp;
+		}
 	}
-	tosend.clear();
-	tosend = to_split.substr((pieces-1)*MAX_BUFF, to_split.length());
-	tosend = tosend + "\x89";
-	dl_send_q.push(tosend);
+	//Never gets here
+	return 0;
 }
 
-//Additional thread that checks and displays messages to user
+//Additional thread that manages server responses
 void *recv_display(void *num){
 	verbose("\nStarted Recv_Display thread");
 	while(1){
 		pthread_mutex_lock(&mutex_dl_receive);
 		if(!dl_receive_q.empty()){
+			//Gets string from queue
+			string recvd = get_string();
 
-			string recvd = dl_receive_q.front();
-			dl_receive_q.pop();
 			if (recvd.substr(0,4)=="FILE"){
 				pthread_mutex_lock(&mutex_file_recv);
 				file_recv_q.push(recvd.substr(1,recvd.length()-1));
@@ -252,6 +298,7 @@ void *recv_display(void *num){
 			}
 			else if(recvd.substr(0,4)=="FILD")
 				writing=0;
+			//Display the received message from server to user
 			else{
 				cout << "\nMessage received from server!" << endl;
 				cout << "'" + recvd + "'" << endl;
@@ -259,23 +306,23 @@ void *recv_display(void *num){
 			}
 		}
 		pthread_mutex_unlock(&mutex_dl_receive);
-		//sleep(3);
-		//cout << "\nSmelly" << endl;
 	}
+	//Never gets here
 	return 0;
 }
 
-
-
-void send_file(){
+//Function used to read in and send file to server, UPLOAD
+void send_file(string name){
 
 	FILE * Input;
 	char C;
 	char Filename[20];
 	string tosend;
 
-	printf("Filename? ");
-	scanf("%s",Filename);
+	//printf("Filename? ");
+	//scanf("%s",Filename);
+
+	strcpy(Filename,name.c_str());
 	Input = fopen(Filename,"r");
 
 	/* Algorithm                               */
@@ -300,18 +347,18 @@ void send_file(){
 
 }
 
-
-
-
-void receive_file(){
+//Function used to receive file from server, GET
+//Use this in recv_thread
+void receive_file(string name){
 
 	FILE * Output;
 	char C;
 	char Filename[20];
 	string temp;
 
-	printf("Filename? ");
-	scanf("%s",Filename);
+	//printf("Filename? ");
+	//scanf("%s",Filename);
+	strcpy(Filename, name.c_str());
 	Output = fopen(Filename,"wb");
 
 	/* Algorithm                               */
