@@ -4,6 +4,7 @@ APP Layer:
 -Message cutting on server
 -Logout command (remove from server DB). Done -> Test a little more
 -File transfer
+  -Client side is build, but will need testing once server side is done.
 -Commands: upload, get, logout
 -Check/fix server response messages to multiple clients.
 
