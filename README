@@ -7,6 +7,7 @@ APP Layer:
   -Added logic to place file to upload/get in string 'filename'. Passed to functions
   -Added send_history function (SERVER). Will make use of file transfer for 'chat_history.txt'
 -Commands: history, upload, get
+-Message Cutting, NOT WORKING, FUCK!!
 
 DL Layer:
 -Create debug messaging mode
