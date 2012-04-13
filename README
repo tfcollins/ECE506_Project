@@ -1,12 +1,12 @@
 To do:
 
 APP Layer:
--Message cutting on server
--Logout command (remove from server DB). Done -> Test a little more
+
 -File transfer
   -Client side is built, but will need testing once server side is done.
--Commands: upload, get, logout
--Check/fix server response messages to multiple clients.
+  -Added logic to place file to upload/get in string 'filename'. Passed to functions
+  -Added send_history function (SERVER). Will make use of file transfer for 'chat_history.txt'
+-Commands: history, upload, get
 
 DL Layer:
 -Create debug messaging mode
