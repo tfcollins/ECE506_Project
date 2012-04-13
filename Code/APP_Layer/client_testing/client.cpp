@@ -11,6 +11,9 @@
 int PORT = 9218;		/* Known port number */
 char* HOSTNAME;
 int vb_mode=0;
+int writing=0;
+queue<string> file_recv_q;
+pthread_mutex_t mutex_file_recv = PTHREAD_MUTEX_INITIALIZER;
 
 //Function Prototypes
 void *recv_display(void *num);
@@ -141,6 +144,7 @@ int main(int argc, char *argv[]){
 				tosend = command + " " + message;
 			}
 			else if ((command.compare("get") == 0) && (word == 2)){
+				writing=1;//enable writing
 				lessthan = true;
 				tosend = command + " " + message;
 			}
@@ -241,10 +245,18 @@ void *recv_display(void *num){
 
 			string recvd = dl_receive_q.front();
 			dl_receive_q.pop();
-
-			cout << "\nMessage received from server!" << endl;
-			cout << "'" + recvd + "'" << endl;
-			cout << "Please continue...\nEnter input:" << endl;
+			if (recvd.substr(0,4)=="FILE"){
+				pthread_mutex_lock(&mutex_file_recv);
+				file_recv_q.push(recvd.substr(1,recvd.length()-1));
+				pthread_mutex_lock(&mutex_file_recv);	
+			}
+			else if(recvd.substr(0,4)=="FILD")
+				writing=0;
+			else{
+				cout << "\nMessage received from server!" << endl;
+				cout << "'" + recvd + "'" << endl;
+				cout << "Please continue...\nEnter input:" << endl;
+			}
 		}
 		pthread_mutex_unlock(&mutex_dl_receive);
 		//sleep(3);
@@ -252,3 +264,73 @@ void *recv_display(void *num){
 	}
 	return 0;
 }
+
+
+
+void send_file(){
+
+	FILE * Input;
+	char C;
+	char Filename[20];
+	string tosend;
+
+	printf("Filename? ");
+	scanf("%s",Filename);
+	Input = fopen(Filename,"r");
+
+	/* Algorithm                               */
+  	while (!feof(Input)) {
+    		fread (&C, 1, 1, Input);
+		tosend.clear();
+		tosend.append("FILE");
+		tosend=tosend+C;
+		tosend.append("\x89");
+		pthread_mutex_lock(&mutex_dl_send);
+		dl_send_q.push(tosend);
+		pthread_mutex_unlock(&mutex_dl_send);
+
+  	}
+	tosend="FILD\x89";
+	pthread_mutex_lock(&mutex_dl_send);
+	dl_send_q.push(tosend);
+	pthread_mutex_unlock(&mutex_dl_send);
+	cout<<"Done sending"<<endl;
+	fclose(Input);
+
+
+}
+
+
+
+
+void receive_file(){
+
+	FILE * Output;
+	char C;
+	char Filename[20];
+	string temp;
+
+	printf("Filename? ");
+	scanf("%s",Filename);
+	Output = fopen(Filename,"wb");
+
+	/* Algorithm                               */
+  	while (writing||!file_recv_q.empty()) {
+
+		pthread_mutex_lock(&mutex_file_recv);
+		if (!file_recv_q.empty()){	
+			temp=file_recv_q.front();
+			C=temp[0];
+			file_recv_q.pop();
+			fwrite(&C,1,1,Output);
+		}
+		pthread_mutex_unlock(&mutex_file_recv);
+
+  	}
+	cout<<"Done receiving"<<endl;
+	fclose(Output);
+
+
+}
+
+
