@@ -7,7 +7,7 @@
 #define DELIM " "
 #define MAX_BUFF 255
 
-int PORT = 8782;		/* Known port number */
+int PORT = 8785;		/* Known port number */
 int vb_mode = 0;
 
 //User Entry
@@ -62,10 +62,12 @@ int main(int argc, char *argv[]){
     	for(int ID = 0; ID < clients; ID++){
     		pthread_mutex_lock(&mutex_dl_receive[ID]);
     		if(!dl_receive_q[ID].empty()){
+    			pthread_mutex_unlock(&mutex_dl_receive[ID]);
     			verbose("Handling client (APP)");
     			handle_client(ID);
     		}
-    		pthread_mutex_unlock(&mutex_dl_receive[ID]);
+		else
+    			pthread_mutex_unlock(&mutex_dl_receive[ID]);
     	}
     }
 }
@@ -74,11 +76,15 @@ int main(int argc, char *argv[]){
 void handle_client(int client_ID){
 
 	string buff = get_string(client_ID);
+	cout<<1<<endl;
 	char recv_buff[MAX_BUFF] = {0};
+	cout<<1<<endl;
 	strcpy(recv_buff, buff.c_str());
+	cout<<1<<endl;
 
 	//Tokenize the string, first word is the command
 	const char * command = strtok(recv_buff, DELIM);
+	cout<<"Command: "<<command<<endl;
 	//If command is login, try to add user to DB
 	if (strcmp(command, "login") == 0){
 		char * user = strtok(NULL, DELIM);
@@ -141,6 +147,28 @@ void handle_client(int client_ID){
 		db_remove(client_ID);
 	}
 
+	//Client wants to upload a file
+	else if (strcmp(command,"upload") == 0){
+		verbose("Client wants to upload file (APP)");
+		//writing=1;
+		//receive_file(client_ID);
+	}
+
+/*	//Received a piece of a file
+	else if (strcmp(command.substr(0,4),"FILE") == 0){
+		verbose("Client wants to upload file (APP)");
+                pthread_mutex_lock(&mutex_file_recv);
+		file_recv_q.push(command.substr(5,command.length()-1));
+                pthread_mutex_lock(&mutex_file_recv);
+		//receive_file(client_ID);
+	}
+	//Done with file xfer
+	else if (strcmp(command.substr(0,4),"FILD") == 0){
+		verbose("Client wants to upload file (APP)");
+		writing=0;
+		//receive_file(client_ID);
+	}
+	*/
 	//Successfully handled Client
 	verbose("Handled Client (APP)");
 	return;
@@ -149,10 +177,18 @@ void handle_client(int client_ID){
 //Returns concatenated string when getting message from DL Layer
 string get_string(const int client_ID){
 	string str = "";
+	//string temp = "";
 	while(1){
-		string temp = "";
-		temp = dl_receive_q[client_ID].front();
+		string temp="";
+		pthread_mutex_lock(&mutex_dl_receive[client_ID]);
+		if (!dl_receive_q[client_ID].empty())
+			temp = dl_receive_q[client_ID].front();
+		else{
+			pthread_mutex_unlock(&mutex_dl_receive[client_ID]);
+			continue;
+		}
 		dl_receive_q[client_ID].pop();
+		pthread_mutex_unlock(&mutex_dl_receive[client_ID]);
 		//Find the DELIM and erase it, return full string
 		if(temp.find("\x89") < 256){
 			temp.erase(temp.find('\x89'),1);
@@ -337,5 +373,40 @@ string convertInt(int number){
 	ss << number;
 	return ss.str();
 }
+
+/*
+
+//Receive File from user
+void receive_file(const in client_ID){
+
+	FILE * Output;
+        char C;
+        char Filename[20]="output.txt";
+        string temp;
+
+        strcpy(Filename, name.c_str());
+        Output = fopen(Filename,"wb");
+
+        while (writing||!file_recv_q.empty()) {
+
+                pthread_mutex_lock(&mutex_file_recv);
+                if (!file_recv_q.empty()){
+                        temp=file_recv_q.front();
+                        C=temp[0];
+                        file_recv_q.pop();
+                        fwrite(&C,1,1,Output);
+                }
+                pthread_mutex_unlock(&mutex_file_recv);
+
+        }
+        cout<<"Done receiving"<<endl;
+        fclose(Output);
+
+
+}
+
+*/
+
+
 
 
