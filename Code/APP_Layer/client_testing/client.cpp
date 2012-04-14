@@ -8,7 +8,7 @@
 #define DELIM " "
 #define MAX_BUFF 256
 
-int PORT = 8782;		/* Known port number */
+int PORT = 8785;		/* Known port number */
 char* HOSTNAME;
 int vb_mode=0;
 int writing=0;

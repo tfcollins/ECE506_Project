@@ -7,7 +7,7 @@
 #define DELIM " "
 #define MAX_BUFF 255
 
-int PORT = 8786;		/* Known port number */
+int PORT = 8785;		/* Known port number */
 int vb_mode = 0;
 
 //User Entry
@@ -65,7 +65,6 @@ int main(int argc, char *argv[]){
     			pthread_mutex_unlock(&mutex_dl_receive[ID]);
     			verbose("Handling client (APP)");
     			handle_client(ID);
-			cout<<"DONESZ"<<endl;
     		}
 		else
     			pthread_mutex_unlock(&mutex_dl_receive[ID]);
@@ -76,23 +75,22 @@ int main(int argc, char *argv[]){
 //Handles each client based on queue
 void handle_client(int client_ID){
 
+	string command;
 	string buff = get_string(client_ID);
-	char recv_buff[MAX_BUFF] = {0};
-	strcpy(recv_buff, buff.c_str());
+	istringstream iss(buff);
+	iss >> command;
 
-	//Tokenize the string, first word is the command
-	const char * command = strtok(recv_buff, DELIM);
-	cout<<"Command: "<<command<<endl;
-	//If command is login, try to add user to DB
-	if (strcmp(command, "login") == 0){
-		char * user = strtok(NULL, DELIM);
-		char * age = strtok(NULL, DELIM);
-		char * loc = strtok(NULL, DELIM);
-		char * hobby = strtok(NULL, DELIM);
+	if (strcmp(command.c_str(), "login") == 0){
 
-		if(!user || !loc || !age || !hobby) diewithError("Something went wrong");
+		string user,age,loc,hobby;
+		iss >> user;
+		iss >> age;
+		iss >> loc;
+		iss >> hobby;
+		int ega = atoi(age.c_str());
+
 		//If username already exists
-		if(!add_entry(client_ID, user, atoi(age), loc, hobby)) verbose("Username Exists! (APP)");
+		if(!add_entry(client_ID, user, ega, loc, hobby)) verbose("Username Exists! (APP)");
 		//If not, send logged in to client
 		else {
 			verbose("Sending Login (APP)");
@@ -101,53 +99,51 @@ void handle_client(int client_ID){
 	}
 
 	//Client wants to see who is online
-	else if (strcmp(command,"who") == 0){
+	else if (strcmp(command.c_str(),"who") == 0){
 		verbose("Received 'who' from client (APP)");
 		send_users(client_ID);
 	}
 
 	//Client wants to send message to all other clients
-	else if (strcmp(command,"send") == 0){
+	else if (strcmp(command.c_str(),"send") == 0){
 		verbose("Received 'send' from client (APP)");
 		string message = "";
 
-		//Prepare message to be sent to all clients
-		command = strtok(NULL, DELIM);
-		while (command != NULL){
-			message = message + " " + command;
-			command = strtok(NULL, DELIM);
+		string temp;
+		while (iss >> temp){
+			message = message + temp + " ";
 		}
 		string user = return_username(client_ID);
 		string tosend = user + " said:" + message;
 		add_to_history(user + " said:" + message);
 
 		//If message sent over MAX_BUFF, send to split, else send.
-		tosend="HELLO";
 		if (tosend.size() > MAX_BUFF-1) split_send_all(tosend);
-		else send_to_all(tosend+"\x89");
+		else send_to_all(tosend +"\x89");
 	}
 
 	//Client wants chat_history.txt
-	else if (strcmp(command, "history") == 0){
+	else if (strcmp(command.c_str(), "history") == 0){
 		verbose("Received 'history' from client (APP)");
 		send_history(client_ID);
 	}
 
 	//Client wants to see user's profile info
-	else if (strcmp(command,"what") == 0){
+	else if (strcmp(command.c_str(),"what") == 0){
 		verbose("Received 'what' from client (APP)");
-		char * name = strtok(NULL,DELIM);
+		string name;
+		iss >> name;
 		send_info(client_ID,name);
 	}
 
 	//Client wants to logout, remove from DB
-	else if (strcmp(command,"logout") == 0){
+	else if (strcmp(command.c_str(),"logout") == 0){
 		verbose("Received logout");
 		db_remove(client_ID);
 	}
 
 	//Client wants to upload a file
-	else if (strcmp(command,"upload") == 0){
+	else if (strcmp(command.c_str(),"upload") == 0){
 		verbose("Client wants to upload file (APP)");
 		//writing=1;
 		//receive_file(client_ID);
@@ -170,15 +166,12 @@ void handle_client(int client_ID){
 	*/
 	//Successfully handled Client
 	verbose("Handled Client (APP)");
-	sleep(10);
-	cout<<"RETURNING"<<endl;
 	return;
 }
 
 //Returns concatenated string when getting message from DL Layer
 string get_string(const int client_ID){
 	string str = "";
-	//string temp = "";
 	while(1){
 		string temp="";
 		pthread_mutex_lock(&mutex_dl_receive[client_ID]);
@@ -224,7 +217,7 @@ bool add_entry(const int client_ID, const string &username, const int age, const
 bool name_check(const string name, const int client_ID){
 	for (list<user_entry>::iterator entry = database.begin(); entry != database.end(); entry++){
 		if ((strcmp(entry->username.c_str(), name.c_str())) == 0){
-			string tosend = "ERROR! Username already exists.";
+			string tosend = "ERROR! Username already exists.x89";
 			send_to_one(client_ID, tosend);
 			return false;
 		}
@@ -326,7 +319,6 @@ void split_send_one(const int client_ID, string to_split){
 
 //Send string to all connected clients
 void send_to_all(string tosend){
-	//tosend = tosend + "\x89";
 	int cnt = 0;
 	for (list<user_entry>::const_iterator entry = database.begin(); entry != database.end(); entry++){
 		cnt = entry->client_ID;
@@ -339,7 +331,6 @@ void send_to_all(string tosend){
 
 //Send string to one requesting client
 void send_to_one(const int client_ID, string tosend){
-	//tosend = tosend + "\x89";
 	pthread_mutex_lock(&mutex_dl_send[client_ID]);
 	dl_send_q[client_ID].push(tosend);
 	pthread_mutex_unlock(&mutex_dl_send[client_ID]);

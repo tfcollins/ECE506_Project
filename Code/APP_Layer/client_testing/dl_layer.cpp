@@ -377,7 +377,7 @@ int message_cutter(){
 		for (int i=0;i<number_of_pieces;i++){
 			piece.clear();
 			if (i==(number_of_pieces-1)){//Last piece
-				piece=message.substr(i*BUFFER_SIZE,(i)*BUFFER_SIZE+(message.size()%BUFFER_SIZE));
+				piece=message.substr(i*BUFFER_SIZE,(i)*BUFFER_SIZE+(message.size()%(BUFFER_SIZE+1)));
 				
 				if (piece[piece.length()-1]!='\?')//Dont add end delimeter if already there
 					if (piece[piece.length()-1]!='\x88')//Dont add mid delimeter if already there

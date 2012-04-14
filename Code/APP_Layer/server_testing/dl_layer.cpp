@@ -213,12 +213,12 @@ void *dl_layer_server(void *client_num){
                                 }
 				pthread_mutex_lock(&mutex_dl_send[client]);
 				data=dl_send_q[client].front();
-				cout<<"Wants to send: "<<data<<" (DL)"<<endl;
+				//cout<<"Wants to send: "<<data<<" (DL)"<<endl;
 				dl_send_q[client].pop();
 				pthread_mutex_unlock(&mutex_dl_send[client]);
 
 				pthread_mutex_lock(&mutex_window_q[client]);
-				cout<<"Added to window"<<endl;
+				//cout<<"Added to window"<<endl;
 				window_q[client].push(data);//Save if needed for retransmission
 				pthread_mutex_unlock(&mutex_window_q[client]);
 				//Send buffer to physical layer
@@ -234,7 +234,7 @@ void *dl_layer_server(void *client_num){
 				frame_to_send = ack_expected;
 				//Reset N Frames
 				if (queued==0){
-					cout<<"ERROR: Timeout incorrect Queue Size"<<endl;
+					//cout<<"ERROR: Timeout incorrect Queue Size"<<endl;
 					exit(1);
 				}
 				for (int i = 0; i < queued; i++){
@@ -271,7 +271,7 @@ void *dl_layer_server(void *client_num){
 
 //Trigger when event occurs
 int wait_for_event(int client){
-	cout<<"WAIT FOR EVENT"<<endl;
+	//cout<<"WAIT FOR EVENT"<<endl;
 	int event=0;
 	int client_temp;
 	while(event<1){
@@ -306,7 +306,7 @@ int wait_for_event(int client){
 	    //pthread_mutex_unlock( &mutex_dl_send[client] );
 	    //if(client_temp!=client)
 	//	cout<<"EEEERRRRRORRRRRRRRRRRRRRRRRRRRRR"<<endl;
-	cout<<"DLLLLLLL WAIT LOOP\r";
+	//cout<<"DLLLLLLL WAIT LOOP\r";
 	}
 	return event;
 }
@@ -323,7 +323,7 @@ static void send_data(int frame_to_send, int frame_expected, string buff, int ty
 		
 	string tosend = string(type_c) + '\a' + frame_to_send_c + '\a' + buff;
 
-	cout<<"Sending to phy: "<<tosend<<" Size: "<<tosend.size()<<endl;
+	//cout<<"Sending to phy: "<<tosend<<" Size: "<<tosend.size()<<endl;
 	pthread_mutex_lock(&mutex_phy_send[client]);
 	phy_send_q[client].push(tosend);
 	pthread_mutex_unlock(&mutex_phy_send[client]);
@@ -422,7 +422,7 @@ int message_cutter(int client){
                 for (int i=0;i<number_of_pieces;i++){
                         piece.clear();
                         if (i==(number_of_pieces-1)){
-                                piece=message.substr(i*BUFFER_SIZE,(i)*BUFFER_SIZE+(message.size()%BUFFER_SIZE));
+                                piece=message.substr(i*BUFFER_SIZE,(i)*BUFFER_SIZE+(message.size()%(BUFFER_SIZE+1)));
                                 if (piece[piece.length()-1]!='\?')
 					if (piece[piece.length()-1]!='\x88') 
 						piece.append("\?");//end marker
