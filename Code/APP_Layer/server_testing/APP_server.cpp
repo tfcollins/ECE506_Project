@@ -7,7 +7,7 @@
 #define DELIM " "
 #define MAX_BUFF 255
 
-int PORT = 8785;		/* Known port number */
+int PORT = 8786;		/* Known port number */
 int vb_mode = 0;
 
 //User Entry
@@ -65,6 +65,7 @@ int main(int argc, char *argv[]){
     			pthread_mutex_unlock(&mutex_dl_receive[ID]);
     			verbose("Handling client (APP)");
     			handle_client(ID);
+			cout<<"DONESZ"<<endl;
     		}
 		else
     			pthread_mutex_unlock(&mutex_dl_receive[ID]);
@@ -76,11 +77,8 @@ int main(int argc, char *argv[]){
 void handle_client(int client_ID){
 
 	string buff = get_string(client_ID);
-	cout<<1<<endl;
 	char recv_buff[MAX_BUFF] = {0};
-	cout<<1<<endl;
 	strcpy(recv_buff, buff.c_str());
-	cout<<1<<endl;
 
 	//Tokenize the string, first word is the command
 	const char * command = strtok(recv_buff, DELIM);
@@ -98,7 +96,7 @@ void handle_client(int client_ID){
 		//If not, send logged in to client
 		else {
 			verbose("Sending Login (APP)");
-			send_to_one(client_ID,"loggedin");
+			send_to_one(client_ID,"loggedin\x89");
 		}
 	}
 
@@ -124,8 +122,9 @@ void handle_client(int client_ID){
 		add_to_history(user + " said:" + message);
 
 		//If message sent over MAX_BUFF, send to split, else send.
+		tosend="HELLO";
 		if (tosend.size() > MAX_BUFF-1) split_send_all(tosend);
-		else send_to_all(tosend);
+		else send_to_all(tosend+"\x89");
 	}
 
 	//Client wants chat_history.txt
@@ -171,6 +170,8 @@ void handle_client(int client_ID){
 	*/
 	//Successfully handled Client
 	verbose("Handled Client (APP)");
+	sleep(10);
+	cout<<"RETURNING"<<endl;
 	return;
 }
 
@@ -254,7 +255,7 @@ void send_users(const int client_ID){
 	}
 	//If message needs to be split, else send to client
 	if (to_users.size() > MAX_BUFF-1) split_send_one(client_ID, to_users);
-	else send_to_one(client_ID, to_users);
+	else send_to_one(client_ID, to_users+"\x89");
 }
 
 //Get and send user's information to requesting client
@@ -268,13 +269,13 @@ void send_info(const int client_ID, const string &userin){
 
 			//If message needs to be split, else send to client
 			if (to_users.size() > MAX_BUFF-1) split_send_one(client_ID, to_users);
-			else send_to_one(client_ID, to_users);
+			else send_to_one(client_ID, to_users+"\x89");
 
 			return;
 		}
 	}
 	//If user does not exist in the server DB, return this to requesting client
-	send_to_one(client_ID, "'what' request error: That user does not exist");
+	send_to_one(client_ID, "'what' request error: That user does not exist\x89");
 }
 
 //Find the username of the requesting client_ID
@@ -325,7 +326,7 @@ void split_send_one(const int client_ID, string to_split){
 
 //Send string to all connected clients
 void send_to_all(string tosend){
-	tosend = tosend + "\x89";
+	//tosend = tosend + "\x89";
 	int cnt = 0;
 	for (list<user_entry>::const_iterator entry = database.begin(); entry != database.end(); entry++){
 		cnt = entry->client_ID;
@@ -338,7 +339,7 @@ void send_to_all(string tosend){
 
 //Send string to one requesting client
 void send_to_one(const int client_ID, string tosend){
-	tosend = tosend + "\x89";
+	//tosend = tosend + "\x89";
 	pthread_mutex_lock(&mutex_dl_send[client_ID]);
 	dl_send_q[client_ID].push(tosend);
 	pthread_mutex_unlock(&mutex_dl_send[client_ID]);

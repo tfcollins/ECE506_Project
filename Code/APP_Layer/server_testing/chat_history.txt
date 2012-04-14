@@ -1,0 +1,1 @@
+travis said: another message that hopefully should get cut up in to peices and the peices should be printed out onto the screen as they are delimitored and pushed to the data link layer to be transmitted but apparently tthat aws not long enough so i am going to kep writign a shitty sentence and 8W

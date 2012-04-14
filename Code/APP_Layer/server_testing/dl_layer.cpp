@@ -213,10 +213,12 @@ void *dl_layer_server(void *client_num){
                                 }
 				pthread_mutex_lock(&mutex_dl_send[client]);
 				data=dl_send_q[client].front();
+				cout<<"Wants to send: "<<data<<" (DL)"<<endl;
 				dl_send_q[client].pop();
 				pthread_mutex_unlock(&mutex_dl_send[client]);
 
 				pthread_mutex_lock(&mutex_window_q[client]);
+				cout<<"Added to window"<<endl;
 				window_q[client].push(data);//Save if needed for retransmission
 				pthread_mutex_unlock(&mutex_window_q[client]);
 				//Send buffer to physical layer
@@ -269,6 +271,7 @@ void *dl_layer_server(void *client_num){
 
 //Trigger when event occurs
 int wait_for_event(int client){
+	cout<<"WAIT FOR EVENT"<<endl;
 	int event=0;
 	int client_temp;
 	while(event<1){
@@ -284,7 +287,6 @@ int wait_for_event(int client){
 	    pthread_mutex_unlock( &mutex_phy_receive[client] );	
 	    pthread_mutex_lock( &mutex_dl_send[client] );
 	    if (!dl_send_q[client].empty()){
-		//cout<<"Event2";
 		event=2;
 		message_cutter(client);
 	    	pthread_mutex_unlock( &mutex_dl_send[client] );
@@ -304,6 +306,7 @@ int wait_for_event(int client){
 	    //pthread_mutex_unlock( &mutex_dl_send[client] );
 	    //if(client_temp!=client)
 	//	cout<<"EEEERRRRRORRRRRRRRRRRRRRRRRRRRRR"<<endl;
+	cout<<"DLLLLLLL WAIT LOOP\r";
 	}
 	return event;
 }
@@ -320,6 +323,7 @@ static void send_data(int frame_to_send, int frame_expected, string buff, int ty
 		
 	string tosend = string(type_c) + '\a' + frame_to_send_c + '\a' + buff;
 
+	cout<<"Sending to phy: "<<tosend<<" Size: "<<tosend.size()<<endl;
 	pthread_mutex_lock(&mutex_phy_send[client]);
 	phy_send_q[client].push(tosend);
 	pthread_mutex_unlock(&mutex_phy_send[client]);

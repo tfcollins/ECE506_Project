@@ -137,7 +137,7 @@ void *phy_layer_t(void* num){
 
     //Wait to send or receive messages
     while(1) {
-
+	cout<<"PHY LOOP\r";
 	//Check if DL Layer thread is alive
 	if(pthread_kill(dl_thread[client], 0))
 		verbose("ERROR: DL Thread died for client (PHY)");		
@@ -151,7 +151,9 @@ void *phy_layer_t(void* num){
         
 	//Something wants to be sent
 	pthread_mutex_lock( &mutex_phy_send[client] );
-	if(!phy_send_q[client].empty()) FD_SET(thefd, &write_flags);
+	if(!phy_send_q[client].empty()){
+		 FD_SET(thefd, &write_flags);
+	}
 	pthread_mutex_unlock( &mutex_phy_send[client] );
 
         err=select(thefd+1, &read_flags,&write_flags,(fd_set*)0,&waitd);
@@ -211,7 +213,6 @@ void *phy_layer_t(void* num){
 	//if (!phy_send_q[client].empty()){
     	if(FD_ISSET(thefd, &write_flags)) { //Socket ready for writing
 		FD_CLR(thefd, &write_flags);
-	//	cout<<"Sending (PHY) C: "<<client<<endl;
 		
 		pthread_mutex_lock( &mutex_phy_send[client] );
 		string temp=phy_send_q[client].front();
@@ -226,7 +227,7 @@ void *phy_layer_t(void* num){
 
 		strcpy(outbuff,temp.c_str());
 
-		//cout<<"Sending (PHY): "<<outbuff<<endl;
+		cout<<"Sending (PHY): "<<outbuff<<endl;
 		pthread_mutex_lock( &mutex_phy_send[client] );
 		phy_send_q[client].pop();
 		pthread_mutex_unlock( &mutex_phy_send[client] );
