@@ -42,12 +42,13 @@ using namespace std;
 
 int main(int argc, char *argv[]){
 
-	if (argc > 2){
+	if (argc > 3){
 		fprintf(stderr, "usage:\n %s\n", argv[0]);
 		exit(0);
 	}
 	if (argc == 2) vb_mode = atoi(argv[1]);
-
+	if (argc == 3) PORT = atoi(argv[2]);
+	
 	//Initialize Physical Layer
     pthread_t phy_thread;
     int rc;
@@ -117,6 +118,7 @@ void handle_client(int client_ID){
 		string tosend = user + " said:" + message;
 		add_to_history(user + " said:" + message);
 
+		cout<<"Received Message: "<<tosend<<endl;
 		//If message sent over MAX_BUFF, send to split, else send.
 		if (tosend.size() > MAX_BUFF-1) split_send_all(tosend);
 		else send_to_all(tosend +"\x89");
@@ -184,7 +186,7 @@ string get_string(const int client_ID){
 		dl_receive_q[client_ID].pop();
 		pthread_mutex_unlock(&mutex_dl_receive[client_ID]);
 		//Find the DELIM and erase it, return full string
-		if(temp.find("\x89") < 256){
+		if(temp.find("\x89") < 257){
 			temp.erase(temp.find('\x89'),1);
 			str = str + temp;
 			return str;
@@ -286,15 +288,16 @@ void split_send_all(string to_split){
 
 	verbose("File being split, over 256 bytes (APP)");
 	string tosend = "";
-	int pieces=(int)ceil((double)to_split.size()/(double)MAX_BUFF);
+	int pieces=(int)ceil((double)to_split.size()/((double)MAX_BUFF+1));
 
 	for(int i = 0; i < pieces - 1; i++){
 		tosend.clear();
-		tosend = to_split.substr(i*MAX_BUFF,(i+1)*MAX_BUFF - 1);
+		tosend = to_split.substr(i*MAX_BUFF,MAX_BUFF);
 		send_to_all(tosend);
+		cout<<"PIECE APP: "<<tosend<<endl;
 	}
 		tosend.clear();
-		tosend = to_split.substr((pieces-1)*MAX_BUFF, to_split.length());
+		tosend = to_split.substr((pieces-1)*MAX_BUFF, to_split.length()%(MAX_BUFF+1));
 		tosend = tosend + "\x89";
 		send_to_all(tosend);
 }
@@ -308,11 +311,11 @@ void split_send_one(const int client_ID, string to_split){
 
 	for(int i = 0; i < pieces - 1; i++){
 		tosend.clear();
-		tosend = to_split.substr(i*MAX_BUFF,(i+1)*MAX_BUFF - 1);
+		tosend = to_split.substr(i*MAX_BUFF,MAX_BUFF);
 		send_to_one(client_ID, tosend);
 	}
 		tosend.clear();
-		tosend = to_split.substr((pieces-1)*MAX_BUFF, to_split.length());
+		tosend = to_split.substr((pieces-1)*MAX_BUFF, to_split.length()%MAX_BUFF);
 		tosend = tosend + "\x89";
 		send_to_one(client_ID,tosend);
 }

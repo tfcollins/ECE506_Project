@@ -122,7 +122,8 @@ void *phy_layer_t(void* num){
     char outbuff[256];     // Buffer to hold outgoing data
     char inbuff[256];      // Buffer to read incoming data into
     int err;	       // holds return values
-    
+    string previous;
+	    
     memset(&outbuff,0,sizeof(outbuff)); // memset used for portability
     int crc;
     int total=0;
@@ -168,9 +169,15 @@ void *phy_layer_t(void* num){
                 verbose("Socket Closed (PHY)");
                 break;
             }
-            else{
+
+	    previous.append(string(inbuff));
+	    if(previous[previous.length()-1]!='\t'){
+                continue;
+            }
+		strcpy(inbuff,previous.c_str());
+                previous="";//reset temp buffer
 		//string str=string(inbuff);
-		verbose("FULL MESSAGE: "+string(inbuff)+"| (PHY)");    
+		cout<<"FULL MESSAGE: "+string(inbuff)+"| (PHY)"<<endl;    
 		//count messages
 		int messages=0;
 		int saved=0;
@@ -187,7 +194,7 @@ void *phy_layer_t(void* num){
 				crc=atoi(crc_c);
 				//remove crc
 				pch[strlen(pch)-1]= '\0';	
-				verbose("Received Individual: "+string(pch)+" (PHY)");
+				//cout<<"Received Individual: "+string(pch)+" (PHY)"<<endl;
 				//Check CRC
 				if(get_crc(string(pch))==crc){				
 				//cout<<"Correct CRC"<<endl;
@@ -203,7 +210,7 @@ void *phy_layer_t(void* num){
 			}
 			else
 				temp_str=temp_str+inbuff[p];
-			}
+			
 
 		
             }
@@ -227,7 +234,7 @@ void *phy_layer_t(void* num){
 
 		strcpy(outbuff,temp.c_str());
 
-		//cout<<"Sending (PHY): "<<outbuff<<endl;
+		cout<<"Sending (PHY): "<<outbuff<<endl;
 		pthread_mutex_lock( &mutex_phy_send[client] );
 		phy_send_q[client].pop();
 		pthread_mutex_unlock( &mutex_phy_send[client] );

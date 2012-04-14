@@ -114,6 +114,8 @@ void *dl_layer_client(void *num){
 
 				//ACK Received
 				if (buffer.type){
+
+					cout<<"Received ACK"<<endl;
 					//Compare ACK seq number with older seq num in window
 					int start=ack_expected;
 					int count=0;
@@ -123,11 +125,20 @@ void *dl_layer_client(void *num){
 						start=(start+1)%4;
 						count++;		
 					}
+					if (count>=3){
+						cout<<"Duplicate ACK (DL)"<<endl;
+						pthread_mutex_lock(&mutex_phy_receive);
+                                        	phy_receive_q.pop();
+                                        	pthread_mutex_unlock(&mutex_phy_receive);	
+						break;
+					}
 					if(count>0)
 						verbose("Readjusting Known ACKS (DL)");
 					for(int h=0;h<=count;h++){
 						pthread_mutex_lock(&mutex_window_q);
+						cout<<"PREPOP"<<endl;
 						window_q.pop();
+						cout<<"POSTPOP"<<endl;
 						pthread_mutex_unlock(&mutex_window_q);
 						if (queued==0)
 							verbose("Queue Error (DL)");
@@ -362,31 +373,51 @@ frame deconstruct_frame(string input){
 int message_cutter(){
 
 	pthread_mutex_lock(&mutex_dl_send);
-	int i=dl_send_q.size();
+	int E=dl_send_q.size();
 	string message;
 	string piece;
 
-	for (int k=0;k<i;k++){
+//	cout<<"Started Cutting"<<endl;
+
+	for (int k=0;k<E;k++){
 		message.clear();
 		message=dl_send_q.front();
 		dl_send_q.pop();
-		int number_of_pieces=(int)ceil((double)message.size()/(double)BUFFER_SIZE);
-		if (number_of_pieces>1)
+		//cout<<"Q Size: "<<E<<endl;
+		//cout<<"Loop: "<<k<<" Original message: "<<message<<endl;
+		int number_of_pieces=(int)ceil((double)message.size()/((double)BUFFER_SIZE+1));
+		if (number_of_pieces>100)
 			verbose("Message being cut into Pieces");
 		//Add Delimiters
 		for (int i=0;i<number_of_pieces;i++){
 			piece.clear();
 			if (i==(number_of_pieces-1)){//Last piece
-				piece=message.substr(i*BUFFER_SIZE,(i)*BUFFER_SIZE+(message.size()%(BUFFER_SIZE+1)));
-				
-				if (piece[piece.length()-1]!='\?')//Dont add end delimeter if already there
-					if (piece[piece.length()-1]!='\x88')//Dont add mid delimeter if already there
-						piece.append("\?");//end marker
 
-				dl_send_q.push(piece);
+				//Message has already been processed
+				if ((message[message.length()-1]=='\?')||(message[message.length()-1]=='\x88')){
+					dl_send_q.push(message);
+					cout<<"Message Skipped"<<endl;
+				}
+				//Fresh Piece
+				else{
+					//cout<<"END: "<<message[message.length()-1]<<"| \x88 \?"<<endl;
+					if (message[message.length()-1]=='\?')
+						cout<<"C IS BROKEN"<<endl;
+					if (message[message.length()-1]=='\x88')
+						cout<<"C IS BROKEN"<<endl;
+
+
+					//cout<<"Message Size: "<<message.size()<<endl;	
+					piece=message.substr(i*(BUFFER_SIZE-1),i*BUFFER_SIZE+1+(message.size()%(BUFFER_SIZE+1)));
+					//cout<<"Piece Size: "<<piece.size()<<endl;
+					piece.append("\?");//end marker
+					dl_send_q.push(piece);
+				//	cout<<"Fresh Piece: "<<piece<<"|"<<endl;
+				}
 			}
 			else{
-				string str=message.substr(i*BUFFER_SIZE,(i+1)*BUFFER_SIZE);
+				string str=message.substr(0,BUFFER_SIZE);
+				//cout<<"First Piece: "<<str<<"|"<<endl;
 				dl_send_q.push(str.append("\x88"));//Mid message marker
 
 			}

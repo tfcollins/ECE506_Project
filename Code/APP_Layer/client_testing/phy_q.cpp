@@ -65,6 +65,7 @@ void *phy_layer_t(void* num){
     verbose("Socket_SETUP");;
     int crc;
     int total=0;
+    string previous="";
 
     while(1) {
 	//sleep(1);
@@ -82,20 +83,27 @@ void *phy_layer_t(void* num){
         if(FD_ISSET(thefd, &read_flags)) { //Socket ready for reading
             FD_CLR(thefd, &read_flags);
             memset(&inbuff,0,sizeof(inbuff));
-            if (read(thefd, inbuff, sizeof(inbuff)-1) <= 0) {
-                close(thefd);
-                diewithError("Socket READ Bug socket closed");
-                break;
-            }
-            else{
-		verbose("FULL MESSAGE: "+string(inbuff)+"|");	
+	    if (read(thefd, inbuff, sizeof(inbuff)-1) <= 0) {
+			close(thefd);
+			diewithError("Socket READ Bug socket closed");
+			break;
+	    }
+	    previous.append(string(inbuff));
+	    cout<<inbuff<<endl;
+	    if(previous[previous.length()-1]!='\t'){
+		continue;
+	   }
+		strcpy(inbuff,previous.c_str());
+	    	previous="";//reset temp buffer
+		cout<<"FULL MESSAGE: "+string(inbuff)+"|\n";	
 		string temp_str;
 		for (int p=0;p<strlen(inbuff);p++){
 			if (inbuff[p]=='\t'){
 				char * pch;
 				pch = new char [temp_str.size()+1];
 				strcpy(pch,temp_str.c_str());
-				verbose("Examining: "+string(pch)+"|");
+				//verbose("Examining: "+string(pch)+"|");
+				cout<<"PHY Message1: "<<pch<<endl;
 				char crc_c[2];
 				crc_c[0]=pch[strlen(pch)-1];
 				crc_c[1]='\0';
@@ -124,7 +132,7 @@ void *phy_layer_t(void* num){
 				temp_str=temp_str+inbuff[p];
 		}
             }
-        }
+        
         
         //WRITE SOMETHING
         //if (!phy_send_q.empty()){
@@ -145,7 +153,7 @@ void *phy_layer_t(void* num){
 
 		strcpy(outbuff,temp.c_str());    
 		
-		verbose("Sending '"+string(outbuff)+"' (PHY)");
+		cout<<"Sending '"+string(outbuff)+"' (PHY)"<<endl;
                 write(thefd,outbuff,strlen(outbuff));
                 memset(&outbuff,0,sizeof(outbuff));
                 

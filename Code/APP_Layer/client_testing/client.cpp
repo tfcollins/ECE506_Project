@@ -6,7 +6,7 @@
 #include <cmath>
 
 #define DELIM " "
-#define MAX_BUFF 256
+#define MAX_BUFF 255
 
 int PORT = 8785;		/* Known port number */
 char* HOSTNAME;
@@ -31,11 +31,12 @@ int main(int argc, char *argv[]){
 	struct sockaddr_in serv_addr;
 
 	//Ensure correct number of inputs
-	if ((argc < 7) || (argc > 8)) {
+	if ((argc < 7) || (argc > 9)) {
 		fprintf(stderr, "usage:\n %s <server> login <username> <age> <location> <hobby>\n", argv[0]);
 		exit(0);
 	}
-	if (argc == 8) vb_mode = atoi(argv[7]);
+	if (argc == 8) vb_mode = 1;//atoi(argv[7]);
+	if (argc == 9) PORT = atoi(argv[8]);
 
 	//If not login
 	if (strcmp(argv[2],"login") != 0) {
@@ -79,6 +80,7 @@ int main(int argc, char *argv[]){
 		pthread_mutex_lock(&mutex_dl_receive);
 		if(!dl_receive_q.empty()){
 			string received;
+			pthread_mutex_unlock(&mutex_dl_receive);
 			received = get_string();
 			verbose("RECEIVED '" + received + "' (APP)");
 
@@ -103,7 +105,8 @@ int main(int argc, char *argv[]){
 				exit(1);
 			}
 		}
-		pthread_mutex_unlock(&mutex_dl_receive);
+		else
+			pthread_mutex_unlock(&mutex_dl_receive);
 
 		//Logged in
 		while (logged_in){
@@ -212,17 +215,22 @@ void split_up_message(string to_split){
 
 	verbose("File being split, over 256 bytes (APP)");
 	string tosend = "";
-	int pieces=(int)ceil((double)to_split.size()/(double)MAX_BUFF);
+	int pieces=(int)ceil((double)to_split.size()/((double)MAX_BUFF+1));
+	cout<<"APP Pieces: "<<pieces<<endl;
 	for(int i = 0; i < pieces - 1; i++){
 		tosend.clear();
-		tosend = to_split.substr(i*MAX_BUFF,(i+1)*MAX_BUFF - 1);
+		tosend = to_split.substr(i*MAX_BUFF,MAX_BUFF);
+		cout<<"Adding: "<<tosend<<endl;
 		dl_send_q.push(tosend);
 	}
 	tosend.clear();
-	tosend = to_split.substr((pieces-1)*MAX_BUFF, to_split.length());
+	tosend = to_split.substr((pieces-1)*MAX_BUFF,to_split.length()%(MAX_BUFF+1));
+	//cout<<"Piece: "<<tosend<<"|"<<endl;
+	cout<<"Adding: "<<tosend<<endl;
 	tosend = tosend + "\x89";
 	dl_send_q.push(tosend);
 
+	cout<<"Done Adding to queue"<<endl;
 	pthread_mutex_unlock(&mutex_dl_send);
 }
 
@@ -265,8 +273,17 @@ string get_string(void){
 	string str = "";
 	while(1){
 		string temp = "";
-		temp = dl_receive_q.front();
+		pthread_mutex_lock(&mutex_dl_receive);
+		if (!dl_receive_q.empty()){
+			temp = dl_receive_q.front();
+			cout<<temp<<endl;
+		}
+		else{
+			pthread_mutex_unlock(&mutex_dl_receive);
+			continue;
+		}
 		dl_receive_q.pop();
+		pthread_mutex_unlock(&mutex_dl_receive);
 		//Find the DELIM and erase it, return full string
 		if(temp.find("\x89") < 256){
 			temp.erase(temp.find('\x89'),1);
@@ -289,6 +306,8 @@ void *recv_display(void *num){
 		pthread_mutex_lock(&mutex_dl_receive);
 		if(!dl_receive_q.empty()){
 			//Gets string from queue
+			pthread_mutex_unlock(&mutex_dl_receive);
+			cout<<"Calling get_string"<<endl;
 			string recvd = get_string();
 
 			if (recvd.substr(0,4)=="FILE"){
@@ -305,7 +324,8 @@ void *recv_display(void *num){
 				cout << "Please continue...\nEnter input:" << endl;
 			}
 		}
-		pthread_mutex_unlock(&mutex_dl_receive);
+		else
+			pthread_mutex_unlock(&mutex_dl_receive);
 	}
 	//Never gets here
 	return 0;

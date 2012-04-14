@@ -153,10 +153,11 @@ void *dl_layer_server(void *client_num){
 						//Correctly Ordered Frame
 						//Duplicate	
 						if(buffer.seq_NUM==previous_frame_received[client]){
-						 	verbose("ERROR: Duplicate Message Received (DL)");
+						 	cout<<"ERROR: Duplicate Message Received (DL)"<<endl;
                                                         pthread_mutex_lock(&mutex_phy_receive[client]);
                                                         phy_receive_q[client].pop();
                                                         pthread_mutex_unlock(&mutex_phy_receive[client]);
+							cout<<"ACK NUMBER: "<<buffer.seq_NUM<<endl;
 							send_data(buffer.seq_NUM, 9, "ACK", 1, client);//Send ACK
 							break;
 						} 
@@ -176,7 +177,7 @@ void *dl_layer_server(void *client_num){
                                                         if (recv_temp_buff[u]=='\?'){
 								//verbose("Found Delimiter (DL)");
 								string str2 = recv_temp_buff.substr (0,recv_temp_buff.length()-1);
-								verbose("Resulting message: "+str2+" (DL)");
+								//verbose("Resulting message: "+str2+" (DL)");
                                                                 dl_receive_q[client].push(str2);
 							
                                                                 recv_temp_buff.clear();
@@ -408,30 +409,42 @@ frame deconstruct_frame(char *input){
 int message_cutter(int client){
 
         //pthread_mutex_lock(&mutex_dl_send[client]);
-        int i=dl_send_q[client].size();
+        int E=dl_send_q[client].size();
         string message;
         string piece;
 
-        for (int k=0;k<i;k++){
+	for (int k=0;k<E;k++){
                 message.clear();
                 message=dl_send_q[client].front();
                 dl_send_q[client].pop();
-		//cout<<"Message Size:"<<message.size();
-                int number_of_pieces=(int)ceil((double)message.size()/(double)BUFFER_SIZE);
-		//cout<<"Number of pieces: "<<number_of_pieces<<endl;
+                //cout<<"Original message size: "<<message.size()<<endl;
+                int number_of_pieces=(int)ceil((double)message.size()/((double)BUFFER_SIZE+1));
+                if (number_of_pieces>1)
+                        verbose("Message being cut into Pieces");
+                //Add Delimiters
                 for (int i=0;i<number_of_pieces;i++){
                         piece.clear();
-                        if (i==(number_of_pieces-1)){
-                                piece=message.substr(i*BUFFER_SIZE,(i)*BUFFER_SIZE+(message.size()%(BUFFER_SIZE+1)));
-                                if (piece[piece.length()-1]!='\?')
-					if (piece[piece.length()-1]!='\x88') 
-						piece.append("\?");//end marker
-                                dl_send_q[client].push(piece);
+                        if (i==(number_of_pieces-1)){//Last piece
+
+                                //Message has already been processed
+                                if ((message.find("\?")<256)||(message.find("\x88")<256)){
+                                        dl_send_q[client].push(message);
+                                        cout<<"Message Skipped"<<endl;
+                                }
+                                //Fresh Piece
+                                else{
+                                        piece=message.substr(i*(BUFFER_SIZE-1),i*BUFFER_SIZE+1+(message.size()%(BUFFER_SIZE+1)));
+                                        piece.append("\?");//end marker
+                                        dl_send_q[client].push(piece);
+                                        cout<<"Fresh Piece: "<<piece<<"|"<<endl;
+                                }
                         }
                         else{
-				string str=message.substr(i*BUFFER_SIZE,(i+1)*BUFFER_SIZE);
-                                dl_send_q[client].push(str.append("\x88"));
-			}
+                                string str=message.substr(0,BUFFER_SIZE);
+                                cout<<"First Piece: "<<str<<"|"<<endl;
+                                dl_send_q[client].push(str.append("\x88"));//Mid message marker
+
+                        }
                 }
 
         }
