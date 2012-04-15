@@ -174,7 +174,7 @@ void *dl_layer_server(void *client_num){
 							recv_temp_buff.append(buffer.data);
                                                 //check if endline character exists
                                                 for (int u=0;u<recv_temp_buff.size();u++)
-                                                        if (recv_temp_buff[u]=='\?'){
+                                                        if (recv_temp_buff[u]=='\t'){
 								//verbose("Found Delimiter (DL)");
 								string str2 = recv_temp_buff.substr (0,recv_temp_buff.length()-1);
 								//verbose("Resulting message: "+str2+" (DL)");
@@ -192,7 +192,7 @@ void *dl_layer_server(void *client_num){
 						//cout<<"Sending ACK (DL)"<<endl;
 					}
 					else{//Drop Packet
-						verbose("ERROR: Data Frame out order, dropping (DL)");
+						cout<<"ERROR: Data Frame out order, dropping (DL)"<<endl;
 						pthread_mutex_lock(&mutex_phy_receive[client]);
 						phy_receive_q[client].pop();
 						pthread_mutex_unlock(&mutex_phy_receive[client]);
@@ -427,14 +427,14 @@ int message_cutter(int client){
                         if (i==(number_of_pieces-1)){//Last piece
 
                                 //Message has already been processed
-                                if ((message.find("\?")<256)||(message.find("\x88")<256)){
+                                if ((message.find("\t")<256)||(message.find("\x88")<256)){
                                         dl_send_q[client].push(message);
                                         cout<<"Message Skipped"<<endl;
                                 }
                                 //Fresh Piece
                                 else{
                                         piece=message.substr(i*(BUFFER_SIZE-1),i*BUFFER_SIZE+1+(message.size()%(BUFFER_SIZE+1)));
-                                        piece.append("\?");//end marker
+                                        piece.append("\t");//end marker
                                         dl_send_q[client].push(piece);
                                         cout<<"Fresh Piece: "<<piece<<"|"<<endl;
                                 }

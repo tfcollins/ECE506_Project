@@ -115,7 +115,7 @@ void *dl_layer_client(void *num){
 				//ACK Received
 				if (buffer.type){
 
-					cout<<"Received ACK"<<endl;
+					//cout<<"Received ACK"<<endl;
 					//Compare ACK seq number with older seq num in window
 					int start=ack_expected;
 					int count=0;
@@ -136,9 +136,7 @@ void *dl_layer_client(void *num){
 						verbose("Readjusting Known ACKS (DL)");
 					for(int h=0;h<=count;h++){
 						pthread_mutex_lock(&mutex_window_q);
-						cout<<"PREPOP"<<endl;
 						window_q.pop();
-						cout<<"POSTPOP"<<endl;
 						pthread_mutex_unlock(&mutex_window_q);
 						if (queued==0)
 							verbose("Queue Error (DL)");
@@ -173,7 +171,7 @@ void *dl_layer_client(void *num){
 							recv_temp_buff.append(buffer.data);
 						//check if endline character exists
 						for (int u=0;u<recv_temp_buff.size();u++)
-							if (recv_temp_buff[u]=='\?'){//End of cutup message found
+							if (recv_temp_buff[u]=='\t'){//End of cutup message found
 								string str2 = recv_temp_buff.substr (0,recv_temp_buff.length()-1);
 								dl_receive_q.push(str2);
 								recv_temp_buff.clear();
@@ -394,14 +392,14 @@ int message_cutter(){
 			if (i==(number_of_pieces-1)){//Last piece
 
 				//Message has already been processed
-				if ((message[message.length()-1]=='\?')||(message[message.length()-1]=='\x88')){
+				if ((message[message.length()-1]=='\t')||(message[message.length()-1]=='\x88')){
 					dl_send_q.push(message);
-					cout<<"Message Skipped"<<endl;
+				//	cout<<"Message Skipped"<<endl;
 				}
 				//Fresh Piece
 				else{
-					//cout<<"END: "<<message[message.length()-1]<<"| \x88 \?"<<endl;
-					if (message[message.length()-1]=='\?')
+					//cout<<"END: "<<message[message.length()-1]<<"| \x88 \t"<<endl;
+					if (message[message.length()-1]=='\t')
 						cout<<"C IS BROKEN"<<endl;
 					if (message[message.length()-1]=='\x88')
 						cout<<"C IS BROKEN"<<endl;
@@ -410,7 +408,7 @@ int message_cutter(){
 					//cout<<"Message Size: "<<message.size()<<endl;	
 					piece=message.substr(i*(BUFFER_SIZE-1),i*BUFFER_SIZE+1+(message.size()%(BUFFER_SIZE+1)));
 					//cout<<"Piece Size: "<<piece.size()<<endl;
-					piece.append("\?");//end marker
+					piece.append("\t");//end marker
 					dl_send_q.push(piece);
 				//	cout<<"Fresh Piece: "<<piece<<"|"<<endl;
 				}

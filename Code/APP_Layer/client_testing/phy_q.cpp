@@ -89,21 +89,21 @@ void *phy_layer_t(void* num){
 			break;
 	    }
 	    previous.append(string(inbuff));
-	    cout<<inbuff<<endl;
-	    if(previous[previous.length()-1]!='\t'){
+	    //cout<<inbuff<<endl;
+	    if(previous[previous.length()-1]!='\b'){
 		continue;
 	   }
 		strcpy(inbuff,previous.c_str());
 	    	previous="";//reset temp buffer
-		cout<<"FULL MESSAGE: "+string(inbuff)+"|\n";	
+		//cout<<"FULL MESSAGE: "+string(inbuff)+"|\n";	
 		string temp_str;
 		for (int p=0;p<strlen(inbuff);p++){
-			if (inbuff[p]=='\t'){
+			if (inbuff[p]=='\b'){
 				char * pch;
 				pch = new char [temp_str.size()+1];
 				strcpy(pch,temp_str.c_str());
 				//verbose("Examining: "+string(pch)+"|");
-				cout<<"PHY Message1: "<<pch<<endl;
+				cout<<"PHY Message: "<<pch<<endl;
 				char crc_c[2];
 				crc_c[0]=pch[strlen(pch)-1];
 				crc_c[1]='\0';
@@ -119,7 +119,7 @@ void *phy_layer_t(void* num){
 					verbose("CRC Check FAILLED (PHY)");
 					//verbose("Recv CRC: "+string(crc)+" Calc CRC: "+string(get_crc(string(pch))));
 					verbose("Corrupted Message: "+string(pch)+"|");
-					pch = strtok(NULL, "\t");
+					pch = strtok(NULL, "\b");
 					continue;
 				}
 				verbose("Received: "+string(pch));
@@ -149,7 +149,7 @@ void *phy_layer_t(void* num){
 		sprintf(crc_s,"%d",crc);
 		//cout<<"CRC: "<<crc_s<<endl;
 		temp.append(crc_s);
-		temp.append("\t");
+		temp.append("\b");
 
 		strcpy(outbuff,temp.c_str());    
 		

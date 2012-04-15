@@ -9,6 +9,10 @@
 
 int PORT = 8785;		/* Known port number */
 int vb_mode = 0;
+int writing=0;
+queue<string> file_recv_q;
+pthread_mutex_t mutex_file_recv = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutex_writing = PTHREAD_MUTEX_INITIALIZER;
 
 //User Entry
 struct user_entry{
@@ -20,6 +24,7 @@ struct user_entry{
 };
 //Database of User Entries
 static list<user_entry> database;
+
 
 //Function Prototypes
 void handle_client(int ID);
@@ -37,6 +42,7 @@ void send_to_one(const int client_ID, string tosend);
 void add_to_history(string message);
 void send_history(const int client_ID);
 string convertInt(int number);
+void *receive_file(void* client_ID);
 
 using namespace std;
 
@@ -78,9 +84,10 @@ void handle_client(int client_ID){
 
 	string command;
 	string buff = get_string(client_ID);
+	//cout<<"BUFF: "<<buff<<endl;
 	istringstream iss(buff);
 	iss >> command;
-
+	//cout<<"\n\nCOMMAND: "<<command<<endl;
 	if (strcmp(command.c_str(), "login") == 0){
 
 		string user,age,loc,hobby;
@@ -118,7 +125,7 @@ void handle_client(int client_ID){
 		string tosend = user + " said:" + message;
 		add_to_history(user + " said:" + message);
 
-		cout<<"Received Message: "<<tosend<<endl;
+		//cout<<"Received Message: "<<tosend<<endl;
 		//If message sent over MAX_BUFF, send to split, else send.
 		if (tosend.size() > MAX_BUFF-1) split_send_all(tosend);
 		else send_to_all(tosend +"\x89");
@@ -144,30 +151,52 @@ void handle_client(int client_ID){
 		db_remove(client_ID);
 	}
 
+
 	//Client wants to upload a file
 	else if (strcmp(command.c_str(),"upload") == 0){
-		verbose("Client wants to upload file (APP)");
-		//writing=1;
+		//cout<<"Client wants to upload file (APP)"<<endl;
+		pthread_mutex_lock(&mutex_writing);;
+		writing=1;
+		pthread_mutex_unlock(&mutex_writing);;
+		//Start file writing thread
+    		pthread_t file_thread;
+    		int rc2;
+    		rc2 = pthread_create(&file_thread, NULL, receive_file, (void *) 1);
+    		if (rc2){
+            		cout<<"File Upload Thread Failed to be created"<<endl;
+            		exit(1);
+    		}
+		else
+			cout<<"Thread Started"<<endl;
 		//receive_file(client_ID);
 	}
 
-/*	//Received a piece of a file
-	else if (strcmp(command.substr(0,4),"FILE") == 0){
-		verbose("Client wants to upload file (APP)");
+	//Received a piece of a file
+	else if (strcmp(command.c_str(),"FILE") ==0){
+		//cout<<"Received piece of file upload (APP)"<<endl;
+		string message = "";
+		string temp;
+                while (iss >> temp){
+                        message = message + temp + " ";
+                }
+		//iss>>temp;
                 pthread_mutex_lock(&mutex_file_recv);
-		file_recv_q.push(command.substr(5,command.length()-1));
-                pthread_mutex_lock(&mutex_file_recv);
+		file_recv_q.push(buff.substr(5,buff.length()-5));
+                pthread_mutex_unlock(&mutex_file_recv);
 		//receive_file(client_ID);
+		return;
 	}
 	//Done with file xfer
-	else if (strcmp(command.substr(0,4),"FILD") == 0){
-		verbose("Client wants to upload file (APP)");
+	else if (command.find("FILD") < 256){
+		cout<<"Client is done uploading file (APP)"<<endl;
+		pthread_mutex_lock(&mutex_writing);;
 		writing=0;
+		pthread_mutex_unlock(&mutex_writing);;
 		//receive_file(client_ID);
 	}
-	*/
+
 	//Successfully handled Client
-	verbose("Handled Client (APP)");
+	cout<<"Handled Client (APP)"<<endl;
 	return;
 }
 
@@ -369,30 +398,53 @@ string convertInt(int number){
 	return ss.str();
 }
 
-/*
 
 //Receive File from user
-void receive_file(const in client_ID){
+void *receive_file(void *client_ID){
 
 	FILE * Output;
         char C;
         char Filename[20]="output.txt";
         string temp;
+	//char * buffer;
 
-        strcpy(Filename, name.c_str());
+        //strcpy(Filename, name.c_str());
         Output = fopen(Filename,"wb");
-
-        while (writing||!file_recv_q.empty()) {
+	cout<<"File Opened"<<endl;
+        while (1) {
 
                 pthread_mutex_lock(&mutex_file_recv);
                 if (!file_recv_q.empty()){
+			//cout<<"Writing Piece"<<endl;
+			temp.clear();
                         temp=file_recv_q.front();
-                        C=temp[0];
+			temp=temp.substr(0,temp.length());
+                	cout<<"Writing: "<<temp<<"|"<<endl;
+
                         file_recv_q.pop();
-                        fwrite(&C,1,1,Output);
+          
+			char * buffer;
+			buffer = new char [temp.size()+1];      
+			//buffer = (char*) malloc (sizeof(char)*temp.length());
+			strcpy(buffer,temp.c_str());
+		        fwrite(buffer,1,temp.length(),Output);
                 }
                 pthread_mutex_unlock(&mutex_file_recv);
 
+		//Check if we are done	
+                pthread_mutex_lock(&mutex_file_recv);
+                pthread_mutex_lock(&mutex_writing);
+
+		if(writing||!file_recv_q.empty()){
+                	pthread_mutex_unlock(&mutex_writing);
+                	pthread_mutex_unlock(&mutex_file_recv);
+			continue;
+		}
+		else{
+                	pthread_mutex_unlock(&mutex_writing);
+                	pthread_mutex_unlock(&mutex_file_recv);
+			break;
+		}
         }
         cout<<"Done receiving"<<endl;
         fclose(Output);
@@ -400,7 +452,7 @@ void receive_file(const in client_ID){
 
 }
 
-*/
+
 
 
 

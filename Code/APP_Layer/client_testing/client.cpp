@@ -7,6 +7,7 @@
 
 #define DELIM " "
 #define MAX_BUFF 255
+#define chunk 100
 
 int PORT = 8785;		/* Known port number */
 char* HOSTNAME;
@@ -156,6 +157,9 @@ int main(int argc, char *argv[]){
 				lessthan = true;
 				filename = message;
 				tosend = command + " " + message;
+				send_dl(tosend+"\x89");
+				send_file(filename);
+				continue;
 			}
 			else if ((command.compare("get") == 0) && (word == 2)){
 				writing=1;//enable writing
@@ -276,7 +280,7 @@ string get_string(void){
 		pthread_mutex_lock(&mutex_dl_receive);
 		if (!dl_receive_q.empty()){
 			temp = dl_receive_q.front();
-			cout<<temp<<endl;
+			//cout<<temp<<endl;
 		}
 		else{
 			pthread_mutex_unlock(&mutex_dl_receive);
@@ -307,7 +311,6 @@ void *recv_display(void *num){
 		if(!dl_receive_q.empty()){
 			//Gets string from queue
 			pthread_mutex_unlock(&mutex_dl_receive);
-			cout<<"Calling get_string"<<endl;
 			string recvd = get_string();
 
 			if (recvd.substr(0,4)=="FILE"){
@@ -336,27 +339,59 @@ void send_file(string name){
 
 	FILE * Input;
 	char C;
-	char Filename[20];
+	char * Filename;
 	string tosend;
 
 	//printf("Filename? ");
-	//scanf("%s",Filename);
-
+	//scanf("%s",Filename) 
+	name=name.substr(0,name.length()-1);
+	Filename = new char [name.size()+1];
 	strcpy(Filename,name.c_str());
 	Input = fopen(Filename,"r");
+	cout<<"REACHED"<<endl;
+
+	// obtain file size:
+	char * buffer;
+  	fseek (Input , 0 , SEEK_END);
+  	int Size = ftell (Input);
+  	rewind (Input);
+	int pieces=(int)floor((double)Size/((double)chunk));
+	cout<<"Pieces to send: "<<pieces<<endl;
+	int remainder=Size%chunk;
+	cout<<"Remainder; "<<remainder<<endl;
+	int index=0;
+	int bytes=0;
+	int done=1;
 
 	/* Algorithm                               */
-  	while (!feof(Input)) {
-    		fread (&C, 1, 1, Input);
+	string buffer_save="";
+  	while (done) {
+		if (index<pieces){
+    			buffer = (char*) malloc (sizeof(char)*chunk);
+			fread(buffer, 1, chunk, Input);
+			bytes=1;	
+		}
+		else{
+			buffer = (char*) malloc (sizeof(char)*remainder);
+    			fread(buffer, 1, remainder, Input);
+			bytes=remainder;done=0;
+		}
 		tosend.clear();
 		tosend.append("FILE");
-		tosend=tosend+C;
+		tosend=tosend+" "+string(buffer);
 		tosend.append("\x89");
+
+		buffer_save.append(buffer);	
+
 		pthread_mutex_lock(&mutex_dl_send);
 		dl_send_q.push(tosend);
 		pthread_mutex_unlock(&mutex_dl_send);
-
+		cout<<"Sending File chunck"<<endl;
+		//sleep(1);
+		index++;
+	
   	}
+	cout<<"Done Sending"<<endl;
 	tosend="FILD\x89";
 	pthread_mutex_lock(&mutex_dl_send);
 	dl_send_q.push(tosend);

@@ -169,22 +169,22 @@ void *phy_layer_t(void* num){
                 verbose("Socket Closed (PHY)");
                 break;
             }
-
 	    previous.append(string(inbuff));
-	    if(previous[previous.length()-1]!='\t'){
+	    if(previous[previous.length()-1]!='\b'){//Check if we have full message
                 continue;
             }
 		strcpy(inbuff,previous.c_str());
                 previous="";//reset temp buffer
 		//string str=string(inbuff);
-		cout<<"FULL MESSAGE: "+string(inbuff)+"| (PHY)"<<endl;    
+		//cout<<"FULL MESSAGE: "+string(inbuff)+"| (PHY)"<<endl;    
 		//count messages
 		int messages=0;
 		int saved=0;
-		string temp_str;
+		string temp_str="";
 		for (int p=0;p<strlen(inbuff);p++){
-			if (inbuff[p]=='\t'){
-				//cout<<temp_str<<endl;
+			if (inbuff[p]=='\b'){
+				//cout<<"|"<<inbuff[p]<<"|"<<endl;
+				//cout<<"TEMP STRING: "<<temp_str<<endl;
 				char *pch;
 				pch = new char [temp_str.size()+1];
 				strcpy(pch,temp_str.c_str());
@@ -230,7 +230,7 @@ void *phy_layer_t(void* num){
 		char crc_s[5];
 		sprintf(crc_s,"%d",crc);
 		temp.append(crc_s);
-		temp.append("\t");
+		temp.append("\b");
 
 		strcpy(outbuff,temp.c_str());
 
