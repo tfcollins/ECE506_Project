@@ -194,7 +194,8 @@ void *phy_layer_t(void* num){
 				crc=atoi(crc_c);
 				//remove crc
 				pch[strlen(pch)-1]= '\0';	
-				cout<<"Received Individual: "+string(pch)+" (PHY)"<<endl;
+				//cout<<"Received Individual: "+string(pch)+" (PHY)"<<endl;
+
 				//Check CRC
 				if(get_crc(string(pch))==crc){				
 				//cout<<"Correct CRC"<<endl;
@@ -234,7 +235,7 @@ void *phy_layer_t(void* num){
 
 		strcpy(outbuff,temp.c_str());
 
-		cout<<"Sending (PHY): "<<outbuff<<endl;
+		//cout<<"Sending (PHY): "<<outbuff<<endl;
 		pthread_mutex_lock( &mutex_phy_send[client] );
 		phy_send_q[client].pop();
 		pthread_mutex_unlock( &mutex_phy_send[client] );
