@@ -153,7 +153,7 @@ void *dl_layer_client(void *num){
 					if ((buffer.seq_NUM==(previous_frame_received+1)%4)||(buffer.seq_NUM==previous_frame_received)){
 						//Duplicate
                                                 if(buffer.seq_NUM==previous_frame_received){
-							verbose("Duplicate Message Received (DL)");
+							cout<<"Duplicate Message Received (DL)"<<endl;
                                                 	pthread_mutex_lock(&mutex_phy_receive);
 							phy_receive_q.pop();
                                                 	pthread_mutex_unlock(&mutex_phy_receive);
@@ -183,8 +183,9 @@ void *dl_layer_client(void *num){
 						send_data(buffer.seq_NUM, 9, "ACK", 1);//Send ACK
 					}
 					else{//Drop Packet
-						verbose("Data Frame out order, dropping (DL)");
+						cout<<"Data Frame out order, dropping (DL)"<<endl;
 						pthread_mutex_lock(&mutex_phy_receive);
+						cout<<"(DL) Dropped Frame: "<<phy_receive_q.front()<<endl;
 						phy_receive_q.pop();
 						pthread_mutex_unlock(&mutex_phy_receive);
 						break;
@@ -308,7 +309,7 @@ int timeouts(void){
 	//Look at times
 	for (int i=0;i<queued;i++)
 		if ((current-timers[i])>TIMEOUT_MAX){
-			verbose("Timeout occured (DL)");
+			cout<<"Timeout occured (DL)"<<endl;
 			return 1;//Timeout occured
 		}
 	return 0;//No timeouts
@@ -414,7 +415,7 @@ int message_cutter(){
 				}
 			}
 			else{
-				string str=message.substr(0,BUFFER_SIZE);
+				string str=message.substr(0,BUFFER_SIZE-1);
 				//cout<<"First Piece: "<<str<<"|"<<endl;
 				dl_send_q.push(str.append("\x88"));//Mid message marker
 

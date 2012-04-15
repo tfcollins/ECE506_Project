@@ -25,7 +25,7 @@ using namespace std;
 #define BUFFER_SIZE 128
 #define MAX_SEQ 4
 #define MAX_PKT 200
-#define TIMEOUT_MAX 3000000 //fix later, 1 sec = 1000000
+#define TIMEOUT_MAX 10000000 //fix later, 1 sec = 1000000
 
 #define PHY 1  //RECEIVE
 #define APP 2  //SEND
@@ -106,6 +106,7 @@ void *dl_layer_server(void *client_num){
 	//Wait for events to happen
 	while (1) {
 		int event=wait_for_event(client);
+		//cout<<"Event"<<event<<endl;
 		switch (event) {
 
 			//If PHY Layer receives message
@@ -114,14 +115,17 @@ void *dl_layer_server(void *client_num){
 				input = phy_receive_q[client].front();
 				pthread_mutex_unlock(&mutex_phy_receive[client]);
 
+
 				tmp = &input[0];
 				buffer = deconstruct_frame(tmp);
 				//cout<<"Message Deconstructed"<<endl;
+				//cout<<"Type: "<<buffer.type<<endl;
 				//cout<<"Original: "<<phy_receive_q[client].front()<<endl;
 				//cout<<"Data: "<<buffer.data<<" seq_NUM: "<<buffer.seq_NUM<<" Type: "<<buffer.type<<endl; 
 
 				//ACK Received
 				if (buffer.type){
+					//cout<<"Received ACK"<<endl;
 					int start=frame_expected;
 					int count=0;
 					while(1){
@@ -133,6 +137,8 @@ void *dl_layer_server(void *client_num){
 					for(int h=0;h<=count;h++){
 						pthread_mutex_lock(&mutex_window_q[client]);
 						window_q[client].pop();
+						//cout<<"Window Queue Popped"<<endl;
+						//cout<<"New W Q Size: "<<window_q[client].size()<<endl;
 						pthread_mutex_unlock(&mutex_window_q[client]);
 
 						queued--;
@@ -241,6 +247,7 @@ void *dl_layer_server(void *client_num){
 				for (int i = 0; i < queued; i++){
 					
 					pthread_mutex_lock(&mutex_window_q[client]);
+					cout<<"Queue Size: "<<window_q[client].size()<<endl;//Get oldest data to send first	
 					data = window_q[client].front();//Get oldest data to send first
 					//Cycle Queue, so we push just oldest message to back, it will reach the front once all windowed messages are sent
 					window_q[client].push(window_q[client].front());
@@ -281,21 +288,26 @@ int wait_for_event(int client){
 	    pthread_mutex_lock( &mutex_phy_receive[client] );	
 	    if (!phy_receive_q[client].empty()){
 		event=1;
+		//cout<<"Something in recevie QUEUE"<<endl;
+	    	pthread_mutex_unlock( &mutex_phy_receive[client] );	
+		break;
 	    }
 	    else{
+	    	pthread_mutex_unlock( &mutex_phy_receive[client] );	
 		//cout<<"Nothing in queue"<<endl;
 	    }
-	    pthread_mutex_unlock( &mutex_phy_receive[client] );	
+	    //pthread_mutex_unlock( &mutex_phy_receive[client] );	
 	    pthread_mutex_lock( &mutex_dl_send[client] );
 	    if (!dl_send_q[client].empty()){
 		event=2;
 		message_cutter(client);
 	    	pthread_mutex_unlock( &mutex_dl_send[client] );
+		break;
 	    }
 	    else{
+	    	pthread_mutex_unlock( &mutex_dl_send[client] );
 		//cout<<"Nothing in queue 2"<<endl;
 	    }
-	    pthread_mutex_unlock( &mutex_dl_send[client] );
 	    if (timeouts()){//Need a timeout function
 		//cout<<"Event3";	
 		event=3;
@@ -309,6 +321,7 @@ int wait_for_event(int client){
 	//	cout<<"EEEERRRRRORRRRRRRRRRRRRRRRRRRRRR"<<endl;
 	//cout<<"DLLLLLLL WAIT LOOP\r";
 	}
+	//cout<<"Event Occured"<<endl;
 	return event;
 }
 
@@ -429,19 +442,19 @@ int message_cutter(int client){
                                 //Message has already been processed
                                 if ((message.find("\t")<256)||(message.find("\x88")<256)){
                                         dl_send_q[client].push(message);
-                                        cout<<"Message Skipped"<<endl;
+                                       // cout<<"Message Skipped"<<endl;
                                 }
                                 //Fresh Piece
                                 else{
                                         piece=message.substr(i*(BUFFER_SIZE-1),i*BUFFER_SIZE+1+(message.size()%(BUFFER_SIZE+1)));
                                         piece.append("\t");//end marker
                                         dl_send_q[client].push(piece);
-                                        cout<<"Fresh Piece: "<<piece<<"|"<<endl;
+                                       // cout<<"Fresh Piece: "<<piece<<"|"<<endl;
                                 }
                         }
                         else{
-                                string str=message.substr(0,BUFFER_SIZE);
-                                cout<<"First Piece: "<<str<<"|"<<endl;
+                                string str=message.substr(0,BUFFER_SIZE-1);
+                                //cout<<"First Piece: "<<str<<"|"<<endl;
                                 dl_send_q[client].push(str.append("\x88"));//Mid message marker
 
                         }

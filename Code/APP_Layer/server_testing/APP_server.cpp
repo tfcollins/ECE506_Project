@@ -8,7 +8,7 @@
 #define MAX_BUFF 255
 
 int PORT = 8785;		/* Known port number */
-int vb_mode = 0;
+int vb_mode = 1;
 int writing=0;
 queue<string> file_recv_q;
 pthread_mutex_t mutex_file_recv = PTHREAD_MUTEX_INITIALIZER;
@@ -84,7 +84,7 @@ void handle_client(int client_ID){
 
 	string command;
 	string buff = get_string(client_ID);
-	//cout<<"BUFF: "<<buff<<endl;
+	cout<<"(APP) BUFF: "<<buff<<endl;
 	istringstream iss(buff);
 	iss >> command;
 	//cout<<"\n\nCOMMAND: "<<command<<endl;
@@ -326,7 +326,7 @@ void split_send_all(string to_split){
 		cout<<"PIECE APP: "<<tosend<<endl;
 	}
 		tosend.clear();
-		tosend = to_split.substr((pieces-1)*MAX_BUFF, to_split.length()%(MAX_BUFF+1));
+		tosend = to_split.substr((pieces-1)*MAX_BUFF, to_split.length()%(MAX_BUFF));
 		tosend = tosend + "\x89";
 		send_to_all(tosend);
 }

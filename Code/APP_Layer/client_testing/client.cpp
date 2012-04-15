@@ -11,7 +11,7 @@
 
 int PORT = 8785;		/* Known port number */
 char* HOSTNAME;
-int vb_mode=0;
+int vb_mode=1;
 int writing=0;
 queue<string> file_recv_q;
 pthread_mutex_t mutex_file_recv = PTHREAD_MUTEX_INITIALIZER;
@@ -228,7 +228,7 @@ void split_up_message(string to_split){
 		dl_send_q.push(tosend);
 	}
 	tosend.clear();
-	tosend = to_split.substr((pieces-1)*MAX_BUFF,to_split.length()%(MAX_BUFF+1));
+	tosend = to_split.substr((pieces-1)*MAX_BUFF,to_split.length()%(MAX_BUFF));
 	//cout<<"Piece: "<<tosend<<"|"<<endl;
 	cout<<"Adding: "<<tosend<<endl;
 	tosend = tosend + "\x89";

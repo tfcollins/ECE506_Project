@@ -103,7 +103,7 @@ void *phy_layer_t(void* num){
 				pch = new char [temp_str.size()+1];
 				strcpy(pch,temp_str.c_str());
 				//verbose("Examining: "+string(pch)+"|");
-				cout<<"PHY Message: "<<pch<<endl;
+			//	cout<<"PHY Message: "<<pch<<endl;
 				char crc_c[2];
 				crc_c[0]=pch[strlen(pch)-1];
 				crc_c[1]='\0';
