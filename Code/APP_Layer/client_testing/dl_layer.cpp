@@ -14,7 +14,7 @@ using namespace std;
 #define MAX_SEQ 4
 #define MAX_PKT 200
 #define BUFFER_SIZE 128
-#define TIMEOUT_MAX 500000 //fix later, 1 sec = 1000000
+#define TIMEOUT_MAX 5000000 //fix later, 1 sec = 1000000
 
 #define PHY 1
 #define APP 2

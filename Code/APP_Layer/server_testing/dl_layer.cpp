@@ -14,7 +14,7 @@ using namespace std;
 #define BUFFER_SIZE 128
 #define MAX_SEQ 4
 #define MAX_PKT 200
-#define TIMEOUT_MAX 1000000 //fix later, 1 sec = 1000000
+#define TIMEOUT_MAX 8000000 //fix later, 1 sec = 1000000
 
 #define PHY 1  //RECEIVE
 #define APP 2  //SEND
