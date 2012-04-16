@@ -625,7 +625,7 @@ void *send_file(void *info) {
 	string buffer_save = "";
 	while (done) {
 		if (index2 < pieces) {
-			buffer = (char*) malloc(sizeof(char) * chunk + 1);
+			buffer = (char*) malloc(sizeof(char) * chunk);
 			memset(buffer, 0, strlen(buffer));
 			buffer2.clear();
 			for (int l = 0; l < chunk; l++) {
@@ -634,7 +634,7 @@ void *send_file(void *info) {
 				index++;
 			}
 		} else {
-			buffer = (char*) malloc(sizeof(char) * remainder + 1);
+			buffer = (char*) malloc(sizeof(char) * remainder);
 			memset(buffer, 0, strlen(buffer));
 			buffer2.clear();
 			for (int l = 0; l < remainder; l++) {
@@ -646,9 +646,9 @@ void *send_file(void *info) {
 		}
 		//cout<<"BUFFER:"<<buffer2<<endl;
 		tosend.clear();
-		tosend.append("FILE");
+		tosend.append("FILE");//FILE Notifier
 		tosend = tosend + " " + string(buffer2);
-		tosend.append("\x89");
+		tosend.append("\x89");//Delim
 
 		buffer_save.append(buffer);
 

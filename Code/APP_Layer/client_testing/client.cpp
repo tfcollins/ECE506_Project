@@ -467,21 +467,19 @@ void receive_file(string name) {
 
 	verbose("File Opened");
 
+//	Write chunks to file
 	while (1) {
 		pthread_mutex_lock(&mutex_file_recv);
 		if (!file_recv_q.empty()) {
 			temp.clear();
 			temp = file_recv_q.front();
-			temp = temp.substr(0, temp.length());
-			//cout<<"Writing: "<<temp<<"|"<<endl;
+			temp = temp.substr(1, temp.length()-1);
 
 			file_recv_q.pop();
 
 			char * buffer;
-			buffer = new char[temp.size() + 1];
-			//buffer = (char*) malloc (sizeof(char)*temp.length());
+			buffer = new char[temp.size()+1];
 			strcpy(buffer, temp.c_str());
-			//fwrite(buffer,1,temp.length(),Output);
 			Output << buffer;
 		}
 		pthread_mutex_unlock(&mutex_file_recv);
