@@ -43,6 +43,7 @@ timeout periods.  The severe load on the CCC servers cause massive latency issue
 
 Usage:
 -Server must be started first
+(Port and Verbose are optional, but if you want to set probability , or port in the case of the server, you will need to set them)
 
 ./server <verbose enable> <port>
 -verbose enable and port are optional inputs
