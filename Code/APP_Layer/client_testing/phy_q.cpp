@@ -122,7 +122,7 @@ void *phy_layer_t(void* num){
 					pch = strtok(NULL, "\b");
 					continue;
 				}
-				verbose("Received: "+string(pch));
+			//	verbose("Received: "+string(pch));
 				pthread_mutex_lock( &mutex_phy_receive );
 				phy_receive_q.push(pch);
 				pthread_mutex_unlock( &mutex_phy_receive );
@@ -153,7 +153,7 @@ void *phy_layer_t(void* num){
 
 		strcpy(outbuff,temp.c_str());    
 		
-		cout<<"Sending '"+string(outbuff)+"' (PHY)"<<endl;
+		//cout<<"Sending '"+string(outbuff)+"' (PHY)"<<endl;
                 write(thefd,outbuff,strlen(outbuff));
                 memset(&outbuff,0,sizeof(outbuff));
                 

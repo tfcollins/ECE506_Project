@@ -15,6 +15,7 @@ int vb_mode=1;
 int writing=0;
 queue<string> file_recv_q;
 pthread_mutex_t mutex_file_recv = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutex_writing = PTHREAD_MUTEX_INITIALIZER;
 
 //Function Prototypes
 void *recv_display(void *num);
@@ -146,8 +147,10 @@ int main(int argc, char *argv[]){
 				else lessthan = true;
 			}
 			else if ((command.compare("history") == 0) && (word == 1)){
-				lessthan = true;
-				tosend = command;
+				writing = 1;
+				tosend.clear();
+				filename = "chat_history.txt ";
+				tosend = "get chat_history.txt\x89";
 			}
 			else if ((command.compare("what") == 0) && (word == 2)){
 				lessthan = true;
@@ -163,7 +166,6 @@ int main(int argc, char *argv[]){
 			}
 			else if ((command.compare("get") == 0) && (word == 2)){
 				writing=1;//enable writing
-				lessthan = true;
 				filename = message;
 				tosend = command + " " + message;
 			}
@@ -193,6 +195,11 @@ int main(int argc, char *argv[]){
 				sleep(3);
 				pthread_cancel(dl_thread);
 				exit(0);
+			}
+			else if(writing){
+				tosend = tosend + "\x89";
+				send_dl(tosend);
+				receive_file(filename);
 			}
 		}
 	}
@@ -315,8 +322,8 @@ void *recv_display(void *num){
 
 			if (recvd.substr(0,4)=="FILE"){
 				pthread_mutex_lock(&mutex_file_recv);
-				file_recv_q.push(recvd.substr(1,recvd.length()-1));
-				pthread_mutex_lock(&mutex_file_recv);	
+				file_recv_q.push(recvd.substr(4,recvd.length()-4));
+				pthread_mutex_unlock(&mutex_file_recv);	
 			}
 			else if(recvd.substr(0,4)=="FILD")
 				writing=0;
@@ -341,9 +348,7 @@ void send_file(string name){
 	char C;
 	char * Filename;
 	string tosend;
-
-	//printf("Filename? ");
-	//scanf("%s",Filename) 
+ 
 	name=name.substr(0,name.length()-1);
 	Filename = new char [name.size()+1];
 	strcpy(Filename,name.c_str());
@@ -406,33 +411,51 @@ void send_file(string name){
 //Use this in recv_thread
 void receive_file(string name){
 
-	FILE * Output;
 	char C;
-	char Filename[20];
+	char Filename[MAX_BUFF];
 	string temp;
+	
+	name=name.substr(0,name.length()-1);
+	strcpy(Filename,name.c_str());
+	ofstream Output (Filename,ios::app | ios::out | ios::binary);
 
-	//printf("Filename? ");
-	//scanf("%s",Filename);
-	strcpy(Filename, name.c_str());
-	Output = fopen(Filename,"wb");
-
-	/* Algorithm                               */
-  	while (writing||!file_recv_q.empty()) {
-
+	verbose("Filed Opened");
+	
+	while(1){
 		pthread_mutex_lock(&mutex_file_recv);
-		if (!file_recv_q.empty()){	
-			temp=file_recv_q.front();
-			C=temp[0];
-			file_recv_q.pop();
-			fwrite(&C,1,1,Output);
-		}
+		if (!file_recv_q.empty()){
+			temp.clear();
+                	temp=file_recv_q.front();
+                	temp=temp.substr(0,temp.length());
+                	//cout<<"Writing: "<<temp<<"|"<<endl;
+
+                	file_recv_q.pop();
+
+                	char * buffer;
+                	buffer = new char [temp.size()+1];
+               		//buffer = (char*) malloc (sizeof(char)*temp.length());
+                	strcpy(buffer,temp.c_str());
+                	//fwrite(buffer,1,temp.length(),Output);
+			Output << buffer;
+		}	
 		pthread_mutex_unlock(&mutex_file_recv);
 
-  	}
+		pthread_mutex_lock(&mutex_file_recv);
+		pthread_mutex_lock(&mutex_writing);
+
+		// Algorithm
+  		if(writing || !file_recv_q.empty()){
+			pthread_mutex_unlock(&mutex_writing);
+			pthread_mutex_unlock(&mutex_file_recv);
+			continue;
+		}
+		else{
+			pthread_mutex_unlock(&mutex_writing);
+                	pthread_mutex_unlock(&mutex_file_recv);
+			break;
+		}
+	}
 	cout<<"Done receiving"<<endl;
-	fclose(Output);
-
-
+	Output.close();
 }
-
 
