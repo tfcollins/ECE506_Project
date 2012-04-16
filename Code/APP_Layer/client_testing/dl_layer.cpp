@@ -2,17 +2,6 @@
  * dl_layer.cpp
  *
  *  Created on: Mar 20, 2012
- *      Author: six
- *
- *
- * Things to do:
- *		- Set up Timer
- *		- Continue to wrap head around piggyback
- *		- Queues, how to get buffer, push/pop
- *		- Queue to app_layer
- *		- Figure out how to reset, seq/ack counters *WHEN
- *		- Finalize how we want to encode/decode, packet/frame format
- *			i. setup basic frame in this
  */
 
 #include "all.h"
@@ -25,7 +14,7 @@ using namespace std;
 #define MAX_SEQ 4
 #define MAX_PKT 200
 #define BUFFER_SIZE 128
-#define TIMEOUT_MAX 5000000 //fix later, 1 sec = 1000000
+#define TIMEOUT_MAX 500000 //fix later, 1 sec = 1000000
 
 #define PHY 1
 #define APP 2
@@ -71,6 +60,7 @@ pthread_mutex_t mutex_app_send = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutex_app_receive = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutex_window_q = PTHREAD_MUTEX_INITIALIZER;
 
+//TFC
 //Data Link Layer Master Thread
 void *dl_layer_client(void *num){
 	int frame_to_send = 0;
@@ -115,7 +105,6 @@ void *dl_layer_client(void *num){
 				//ACK Received
 				if (buffer.type){
 
-					//cout<<"Received ACK"<<endl;
 					//Compare ACK seq number with older seq num in window
 					int start=ack_expected;
 					int count=0;
@@ -185,7 +174,6 @@ void *dl_layer_client(void *num){
 					else{//Drop Packet
 						verbose("Data Frame out order, dropping (DL)");
 						pthread_mutex_lock(&mutex_phy_receive);
-						//verbose("(DL) Dropped Frame: "+phy_receive_q.front());
 						phy_receive_q.pop();
 						pthread_mutex_unlock(&mutex_phy_receive);
 						break;
@@ -253,7 +241,6 @@ void *dl_layer_client(void *num){
 
 					//Reset Timer(s)
 					verbose("Reseting Timer");
-					//cout<<"Timer: "<<timers[i]<<" Current: "<<current_time()<<" Diff: "<<(current_time()-timers[i])<<endl;
 					timers[i]=current_time();
 					//clear the queue
 				}
@@ -268,6 +255,7 @@ void *dl_layer_client(void *num){
 
 //SUPPORT FUNCTIONS//////////////////
 
+//JES
 //Trigger when event occurs
 int wait_for_event(void){
 	int event=0;
@@ -311,7 +299,7 @@ static bool between(int a, int b, int c){
 		return(false);
 }
 
-
+//TFC
 //Check Timeout
 int timeouts(void){
 
@@ -338,6 +326,7 @@ void *time_disp(void* num){
 		}
 }
 
+//TFC
 //Get current time
 long current_time(){
 	
@@ -350,7 +339,7 @@ long current_time(){
 	return total;
 }
 
-
+//TFC
 //Deconstruct Frame from PHY Layer
 frame deconstruct_frame(string input){
 	char * cstr, *split;
@@ -378,6 +367,7 @@ frame deconstruct_frame(string input){
 	  return buffer2;
 }
 
+//TFC
 //Message Cutter
 int message_cutter(){
 
@@ -392,8 +382,6 @@ int message_cutter(){
 		message.clear();
 		message=dl_send_q.front();
 		dl_send_q.pop();
-		//cout<<"Q Size: "<<E<<endl;
-		//cout<<"Loop: "<<k<<" Original message: "<<message<<endl;
 		int number_of_pieces=(int)ceil((double)message.size()/((double)BUFFER_SIZE+1));
 		if (number_of_pieces>100)
 			verbose("Message being cut into Pieces");
@@ -405,23 +393,12 @@ int message_cutter(){
 				//Message has already been processed
 				if ((message[message.length()-1]=='\t')||(message[message.length()-1]=='\x88')){
 					dl_send_q.push(message);
-				//	cout<<"Message Skipped"<<endl;
 				}
 				//Fresh Piece
 				else{
-					//cout<<"END: "<<message[message.length()-1]<<"| \x88 \t"<<endl;
-					//if (message[message.length()-1]=='\t')
-					//	cout<<"C IS BROKEN"<<endl;
-					//if (message[message.length()-1]=='\x88')
-					//	cout<<"C IS BROKEN"<<endl;
-
-
-					//cout<<"Message Size: "<<message.size()<<endl;	
 					piece=message.substr(i*(BUFFER_SIZE-1),i*BUFFER_SIZE+1+(message.size()%(BUFFER_SIZE+1)));
-					//cout<<"Piece Size: "<<piece.size()<<endl;
 					piece.append("\t");//end marker
 					dl_send_q.push(piece);
-				//	cout<<"Fresh Piece: "<<piece<<"|"<<endl;
 				}
 			}
 			else{

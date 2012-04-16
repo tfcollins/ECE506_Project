@@ -30,7 +30,7 @@ typedef struct{
 	int client;
 } info;
 
-
+//TFC
 //Main Physical Layer Thread (Accepts Connections)
 void *phy_layer_server(void *num){
 
@@ -101,7 +101,7 @@ void *phy_layer_server(void *num){
 
 
 
-
+//TFC
 //Physical Layer thread for individual user
 void *phy_layer_t(void* num){
 
@@ -138,7 +138,7 @@ void *phy_layer_t(void* num){
 
     //Wait to send or receive messages
     while(1) {
-	cout<<"PHY LOOP\r";
+	//cout<<"PHY LOOP\r";
 	//Check if DL Layer thread is alive
 	if(pthread_kill(dl_thread[client], 0))
 		verbose("ERROR: DL Thread died for client (PHY)");		
@@ -175,16 +175,14 @@ void *phy_layer_t(void* num){
             }
 		strcpy(inbuff,previous.c_str());
                 previous="";//reset temp buffer
-		//string str=string(inbuff);
-		cout<<"FULL MESSAGE: "+string(inbuff)+"| (PHY)"<<endl;    
+		verbose("FULL MESSAGE: "+string(inbuff)+"| (PHY)");    
 		//count messages
 		int messages=0;
 		int saved=0;
 		string temp_str="";
+		//Remove multiple messages from stream
 		for (int p=0;p<strlen(inbuff);p++){
 			if (inbuff[p]=='\b'){
-				//cout<<"|"<<inbuff[p]<<"|"<<endl;
-				//cout<<"TEMP STRING: "<<temp_str<<endl;
 				char *pch;
 				pch = new char [temp_str.size()+1];
 				strcpy(pch,temp_str.c_str());
@@ -198,7 +196,7 @@ void *phy_layer_t(void* num){
 
 				//Check CRC
 				if(get_crc(string(pch))==crc){				
-					cout<<"Correct CRC"<<endl;
+					verbose("Correct CRC");
 				}	
 				else{//Drop Packet
 					verbose("ERROR: CRC Checksum Failed (PHY)");
@@ -209,7 +207,7 @@ void *phy_layer_t(void* num){
 				pthread_mutex_unlock( &mutex_phy_receive[client] );
 				temp_str.clear();
 			}
-			else
+			else//Accumulate Message
 				temp_str=temp_str+inbuff[p];
 			
 
@@ -218,7 +216,6 @@ void *phy_layer_t(void* num){
         }
         
         //WRITE SOMETHING
-	//if (!phy_send_q[client].empty()){
     	if(FD_ISSET(thefd, &write_flags)) { //Socket ready for writing
 		FD_CLR(thefd, &write_flags);
 		
@@ -235,7 +232,8 @@ void *phy_layer_t(void* num){
 
 		strcpy(outbuff,temp.c_str());
 
-		cout<<"Sending (PHY): "<<outbuff<<endl;
+		//Send Message
+		verbose("Sending (PHY): "+string(outbuff));
 		pthread_mutex_lock( &mutex_phy_send[client] );
 		phy_send_q[client].pop();
 		pthread_mutex_unlock( &mutex_phy_send[client] );
@@ -252,6 +250,7 @@ void *phy_layer_t(void* num){
     
 }
 
+//TFC
 //Calculate checksum
 int get_crc(string str){
 

@@ -82,7 +82,7 @@ int main(int argc, char *argv[]){
     		pthread_mutex_lock(&mutex_dl_receive[ID]);
     		if(!dl_receive_q[ID].empty()){
     			pthread_mutex_unlock(&mutex_dl_receive[ID]);
-    			//verbose("Handling client (APP)");
+    			verbose("Handling client (APP)");
     			handle_client(ID);
     		}
 		else

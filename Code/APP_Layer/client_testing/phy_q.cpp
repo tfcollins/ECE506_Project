@@ -1,44 +1,24 @@
 #include "all.h"
 #include <bitset>
-/*
-#include <stdio.h>
-#include <stdlib.h>
-#include <iostream>
-#include <list>
-#include <cstdlib>
-#include <queue>
-#include <deque>
-#include <pthread.h>
-#include <time.h>
-#include <unistd.h>
-*/
-//using namespace std;
 
 #define BUFFER_SIZE 256
-//#define PORT 5005
-//#define HOSTNAME "CCCWORK2"
 
+//Verbose mode
 void verbose(string message) {
 	if (vb_mode)
         	cout<<message<<endl;
-//	return 0;
 }
 
-//void *phy_send_t(void* num);
-//void *phy_receive_t(void* num);
 void *phy_layer_t(void* num);
 int get_crc(string str);
 
 
-//queues
-//queue<string> phy_send_q;
-//queue<string> phy_receive_q;
 
 int alive=1;
 int connected=1;//Socket connected=1
 int socketfd;//Socket descriptor
 
-
+//TFC
 //overall dl thread
 void *phy_layer_t(void* num){
     
@@ -79,7 +59,6 @@ void *phy_layer_t(void* num){
         if(err < 0) continue;
         
         //READ SOMETHING
-        //cout<<"Trying to read"<<endl;
         if(FD_ISSET(thefd, &read_flags)) { //Socket ready for reading
             FD_CLR(thefd, &read_flags);
             memset(&inbuff,0,sizeof(inbuff));
@@ -89,7 +68,6 @@ void *phy_layer_t(void* num){
 			break;
 	    }
 	    previous.append(string(inbuff));
-	    //cout<<inbuff<<endl;
 	    if(previous[previous.length()-1]!='\b'){
 		continue;
 	   }
@@ -102,8 +80,6 @@ void *phy_layer_t(void* num){
 				char * pch;
 				pch = new char [temp_str.size()+1];
 				strcpy(pch,temp_str.c_str());
-				//verbose("Examining: "+string(pch)+"|");
-			//	cout<<"PHY Message: "<<pch<<endl;
 				char crc_c[2];
 				crc_c[0]=pch[strlen(pch)-1];
 				crc_c[1]='\0';
@@ -137,7 +113,6 @@ void *phy_layer_t(void* num){
         //WRITE SOMETHING
         //if (!phy_send_q.empty()){
             if(FD_ISSET(thefd, &write_flags)) { //Socket ready for writing
-		//cout<<"Q Size: "<<phy_send_q.size()<<endl;
                 FD_CLR(thefd, &write_flags);
 		temp.clear();
 		pthread_mutex_lock( &mutex_phy_send);
@@ -147,7 +122,6 @@ void *phy_layer_t(void* num){
 		crc=get_crc(temp);
 		char crc_s[5];
 		sprintf(crc_s,"%d",crc);
-		//cout<<"CRC: "<<crc_s<<endl;
 		temp.append(crc_s);
 		temp.append("\b");
 
@@ -182,25 +156,16 @@ void *phy_layer_t(void* num){
     
 }
 
-
+//TFC
 //Calculate Checksum value
 int get_crc(string str){
-
 
 	bitset<8> mybits=0;
         bitset<8> crc=0;
 
-
         for (int i=0;i<str.size();i++){
-
                 mybits=bitset<8>(str[i]);
-                //for(int j=0;j<8;j++){
-                 //       crc= crc[0] ^ mybits[j];
-                        //cout<<crc<<endl;
-
-                //}
 		crc= crc ^ mybits;
-
         }
 
         int g=(int) crc[0];
