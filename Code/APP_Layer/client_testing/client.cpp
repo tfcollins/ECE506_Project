@@ -342,70 +342,97 @@ void *recv_display(void *num){
 }
 
 //Function used to read in and send file to server, UPLOAD
-void send_file(string name){
+void send_file(string filename){
 
-	FILE * Input;
-	char C;
-	char * Filename;
-	string tosend;
- 
-	name=name.substr(0,name.length()-1);
-	Filename = new char [name.size()+1];
-	strcpy(Filename,name.c_str());
-	Input = fopen(Filename,"r");
-	cout<<"REACHED"<<endl;
+        //Recreate structure
 
-	// obtain file size:
-	char * buffer;
-  	fseek (Input , 0 , SEEK_END);
-  	int Size = ftell (Input);
-  	rewind (Input);
-	int pieces=(int)floor((double)Size/((double)chunk));
-	cout<<"Pieces to send: "<<pieces<<endl;
-	int remainder=Size%chunk;
-	cout<<"Remainder; "<<remainder<<endl;
-	int index=0;
-	int bytes=0;
-	int done=1;
+        //Set User
+        char * Filename;
+	filename=filename.substr(0,filename.length()-1);
+        Filename = new char [filename.size()+1];
+        strcpy(Filename,filename.c_str());
+        cout<<"\n\nFILENAME: "<<Filename<<"|"<<endl;
 
-	/* Algorithm                               */
-	string buffer_save="";
-  	while (done) {
-		if (index<pieces){
-    			buffer = (char*) malloc (sizeof(char)*chunk);
-			fread(buffer, 1, chunk, Input);
-			bytes=1;	
-		}
+        ifstream Input;
+        size_t Size=0;
+
+        Input.open( Filename, ios::in|ios::binary|ios::ate );
+        Input.seekg(0, ios::end);
+        Size = Input.tellg();
+        Input.seekg(0, ios::beg);
+
+        char * oData = new char[ Size+1];
+
+        Input.read( oData, Size );
+        oData[Size] = '\0';
+
+
+        int pieces=(int)floor((double)Size/((double)chunk));
+        cout<<"Pieces to send: "<<pieces<<endl;
+        int remainder=Size%chunk;
+        cout<<"Remainder; "<<remainder<<endl;
+        int index=0;
+        int index2=0;
+        int bytes=0;
+        int done=1;
+        char * buffer;
+        string tosend;
+        string buffer2;
+
+	sleep(1);
+        /* Algorithm                               */
+        string buffer_save="";
+        while (done) {
+                if (index2<pieces){
+
+                        buffer = (char*) malloc (sizeof(char)*chunk+1);
+                        memset (buffer,0,strlen(buffer));
+                        buffer2.clear();
+                        for (int l=0;l<chunk;l++){
+                                //buffer[l]=oData[index];
+                                buffer2=buffer2+oData[index];
+                                index++;
+                        }
+                }
+
 		else{
-			buffer = (char*) malloc (sizeof(char)*remainder);
-    			fread(buffer, 1, remainder, Input);
-			bytes=remainder;done=0;
-		}
-		tosend.clear();
-		tosend.append("FILE");
-		tosend=tosend+" "+string(buffer);
-		tosend.append("\x89");
+                        buffer = (char*) malloc (sizeof(char)*remainder+1);
+                        memset (buffer,0,strlen(buffer));
+                        buffer2.clear();
+                        for (int l=0;l<remainder;l++){
+                                //buffer[l]=oData[index];
+                                buffer2=buffer2+oData[index];
+                                index++;
+                        }
+                        done=0;
 
-		buffer_save.append(buffer);	
+                }
+                cout<<"BUFFER:"<<buffer2<<endl;
+                tosend.clear();
+                tosend.append("FILE");
+                tosend=tosend+" "+string(buffer2);
+                tosend.append("\x89");
 
-		pthread_mutex_lock(&mutex_dl_send);
-		dl_send_q.push(tosend);
-		pthread_mutex_unlock(&mutex_dl_send);
-		cout<<"Sending File chunck"<<endl;
-		//sleep(1);
-		index++;
-	
-  	}
-	cout<<"Done Sending"<<endl;
-	tosend="FILD\x89";
-	pthread_mutex_lock(&mutex_dl_send);
-	dl_send_q.push(tosend);
-	pthread_mutex_unlock(&mutex_dl_send);
-	cout<<"Done sending"<<endl;
-	fclose(Input);
+                buffer_save.append(buffer);
+
+                pthread_mutex_lock(&mutex_dl_send);
+                dl_send_q.push(tosend);
+                pthread_mutex_unlock(&mutex_dl_send);
+                cout<<"Sending File chunck"<<endl;
+                //sleep(1);
+                index2++;
+
+        }
+        tosend="FILD\x89";
+        pthread_mutex_lock(&mutex_dl_send);
+        dl_send_q.push(tosend);
+        pthread_mutex_unlock(&mutex_dl_send);
+        cout<<"Done sending"<<endl;
+        Input.close();
 
 
 }
+
 
 //Function used to receive file from server, GET
 //Use this in recv_thread

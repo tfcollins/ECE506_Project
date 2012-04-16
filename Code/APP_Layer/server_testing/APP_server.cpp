@@ -46,9 +46,9 @@ void split_send_one(const int client_ID, string to_split);
 void send_to_all(string tosend);
 void send_to_one(const int client_ID, string tosend);
 void add_to_history(string message);
-void send_history(const int client_ID);
+void send_history(const int client_ID, string buff);
 string convertInt(int number);
-void *receive_file(void* client_ID);
+void *receive_file(void* info);
 void *send_file(void* info);
 
 using namespace std;
@@ -141,7 +141,7 @@ void handle_client(int client_ID){
 	//Client wants chat_history.txt
 	else if (strcmp(command.c_str(), "history") == 0){
 		verbose("Received 'history' from client (APP)");
-		send_history(client_ID);
+		send_history(client_ID,buff);
 	}
 
 	//Client wants to see user's profile info
@@ -167,8 +167,14 @@ void handle_client(int client_ID){
 		pthread_mutex_unlock(&mutex_writing);;
 		//Start file writing thread
     		pthread_t file_thread;
-    		int rc2;
-    		rc2 = pthread_create(&file_thread, NULL, receive_file, (void *) 1);
+	    	upload_info file_up;
+                iss>>file_up.filename;
+		cout<<"Filename: "<<file_up.filename<<endl;
+                file_up.client=client_ID;
+                file_up.size=sizeof(file_up)+1;
+
+		int rc2;
+    		rc2 = pthread_create(&file_thread, NULL, receive_file, &file_up);
     		if (rc2){
             		cout<<"File Upload Thread Failed to be created"<<endl;
             		exit(1);
@@ -215,7 +221,7 @@ void handle_client(int client_ID){
                 int rc3;
 		//Thread info to be passed
 		upload_info file_up;
-		file_up.filename=buff.substr(4,buff.length()-4);
+		file_up.filename=buff.substr(4,buff.length()-5);
 		file_up.client=client_ID;
 		file_up.size=sizeof(file_up)+1;
 		//cout<<file_up.filename<<endl;
@@ -417,14 +423,27 @@ void add_to_history(string message){
 }
 
 //History file transfer
-void send_history(const int client_ID){
-	ofstream history ("chat_history.txt");
+void send_history(const int client_ID, string buff){
 
-	if (!history) diewithError("Failed to open chat_history.txt, re-build server!");
-	//Do shit with the file.
-	//send_to_one(client_ID);
-
-	cout << "THIS IS NOT WORKING YET" << endl;;
+	cout<<"Client want to download a file"<<endl;
+	//Construct Filename
+	//Spawn thread to upload file to client
+	pthread_t get_thread;
+	int rc3;
+	//Thread info to be passed
+	upload_info file_up2;
+	file_up2.filename=buff.substr(9,buff.length()-10);
+	cout<<"Filename: " <<file_up2.filename<<endl; 
+	file_up2.client=client_ID;
+	file_up2.size=sizeof(file_up2)+1;
+ 	//Create thread
+        rc3 = pthread_create(&get_thread, NULL, send_file, &file_up2);
+        if (rc3){
+              cout<<"File Upload Thread Failed to be created"<<endl;
+              exit(1);
+        }
+        else
+              cout<<"Thread Started"<<endl;
 
 }
 
@@ -437,57 +456,68 @@ string convertInt(int number){
 
 
 //Receive File from user
-void *receive_file(void *client_ID){
+void *receive_file(void *info){
+	
+	//Recreate structure
+        int client=(*((upload_info*)(info))).client;
 
-	FILE * Output;
-        char C;
-        char Filename[20]="output.txt";
-        string temp;
-	//char * buffer;
+        //Set User
+        int size=(*((upload_info*)(info))).size;
+        char * name_char=new char [size+1];
+        strcpy(name_char,(*((upload_info*)(info))).filename.c_str());
+        string name = name_char;
+	cout<<"Name: "<<name<<endl;
+	//cout<<"Name2: "<<(*((upload_info*)(info))).filename<<endl;
+	string temp;
 
-        //strcpy(Filename, name.c_str());
-        Output = fopen(Filename,"wb");
-	cout<<"File Opened"<<endl;
-        while (1) {
+        //Filename
+        char * Filename;
+        Filename = new char [name.size()+1];
+        strcpy(Filename,name.c_str());
+        cout<<"\n\nFILENAME: "<<Filename<<endl;
 
+        ofstream Output (Filename,ios::app | ios::out | ios::binary);
+
+        verbose("Filed Opened");
+
+        while(1){
                 pthread_mutex_lock(&mutex_file_recv);
                 if (!file_recv_q.empty()){
-			//cout<<"Writing Piece"<<endl;
-			temp.clear();
+                        temp.clear();
                         temp=file_recv_q.front();
-			temp=temp.substr(0,temp.length());
-                	cout<<"Writing: "<<temp<<"|"<<endl;
+                        temp=temp.substr(0,temp.length());
+                        //cout<<"Writing: "<<temp<<"|"<<endl;
 
                         file_recv_q.pop();
-          
-			char * buffer;
-			buffer = new char [temp.size()+1];      
-			//buffer = (char*) malloc (sizeof(char)*temp.length());
-			strcpy(buffer,temp.c_str());
-		        fwrite(buffer,1,temp.length(),Output);
+
+                        char * buffer;
+                        buffer = new char [temp.size()+1];
+                        //buffer = (char*) malloc (sizeof(char)*temp.length());
+                        strcpy(buffer,temp.c_str());
+                        //fwrite(buffer,1,temp.length(),Output);
+                        Output << buffer;
                 }
                 pthread_mutex_unlock(&mutex_file_recv);
 
-		//Check if we are done	
                 pthread_mutex_lock(&mutex_file_recv);
                 pthread_mutex_lock(&mutex_writing);
 
-		if(writing||!file_recv_q.empty()){
-                	pthread_mutex_unlock(&mutex_writing);
-                	pthread_mutex_unlock(&mutex_file_recv);
-			continue;
-		}
-		else{
-                	pthread_mutex_unlock(&mutex_writing);
-                	pthread_mutex_unlock(&mutex_file_recv);
-			break;
-		}
+                // Algorithm
+                if(writing || !file_recv_q.empty()){
+                        pthread_mutex_unlock(&mutex_writing);
+                        pthread_mutex_unlock(&mutex_file_recv);
+                        continue;
+                }
+                else{
+                        pthread_mutex_unlock(&mutex_writing);
+                        pthread_mutex_unlock(&mutex_file_recv);
+                        break;
+                }
         }
         cout<<"Done receiving"<<endl;
-        fclose(Output);
-
-
+        Output.close();
 }
+
 
 //send file to client
 void *send_file(void *info){
@@ -500,54 +530,69 @@ void *send_file(void *info){
 	char * name_char=new char [size+1];
 	strcpy(name_char,(*((upload_info*)(info))).filename.c_str());
 	string name = name_char;
-    	//client = (temp_info.client);
-	//cout<<"CLIENT: "<<client<<endl;
-	//cout<<"CLIENT: "<<&temp_info.client<<endl;
 
 	//Filename
         char * Filename;
-        name=name.substr(0,name.length()-1);
         Filename = new char [name.size()+1];
         strcpy(Filename,name.c_str());
-	cout<<"FILENAME: "<<Filename<<endl;
-	//return 0;
+	cout<<"\n\nFILENAME: "<<Filename<<endl;
 	
-	FILE * Input;
-        char C;
-        string tosend;
-        Input = fopen(Filename,"r");
+	ifstream Input;
+	size_t Size=0;
+
+	Input.open( Filename, ios::in|ios::binary|ios::ate );
+	Input.seekg(0, ios::end);
+	Size = Input.tellg();
+	Input.seekg(0, ios::beg);
+
+	char * oData = new char[ Size+1];
+
+	Input.read( oData, Size );
+	oData[Size] = '\0';
 
 
-
-        // obtain file size:
-        char * buffer;
-        fseek (Input , 0 , SEEK_END);
-        int Size = ftell (Input);
-        rewind (Input);
         int pieces=(int)floor((double)Size/((double)chunk));
         cout<<"Pieces to send: "<<pieces<<endl;
         int remainder=Size%chunk;
         cout<<"Remainder; "<<remainder<<endl;
         int index=0;
+        int index2=0;
         int bytes=0;
         int done=1;
+	char * buffer;
+	string tosend;
+	string buffer2;
 
         /* Algorithm                               */
         string buffer_save="";
         while (done) {
-                if (index<pieces){
-                        buffer = (char*) malloc (sizeof(char)*chunk);
-                        fread(buffer, 1, chunk, Input);
-                        bytes=1;
+                if (index2<pieces){
+        
+	                buffer = (char*) malloc (sizeof(char)*chunk+1);
+			memset (buffer,0,strlen(buffer));
+			buffer2.clear();
+			for (int l=0;l<chunk;l++){
+				//buffer[l]=oData[index];
+				buffer2=buffer2+oData[index]; 
+				index++;
+			}
                 }
                 else{
-                        buffer = (char*) malloc (sizeof(char)*remainder);
-                        fread(buffer, 1, remainder, Input);
-                        bytes=remainder;done=0;
+                        buffer = (char*) malloc (sizeof(char)*remainder+1);
+			memset (buffer,0,strlen(buffer));
+			buffer2.clear();
+			for (int l=0;l<remainder;l++){
+                                //buffer[l]=oData[index];
+				buffer2=buffer2+oData[index]; 
+                                index++;
+                        }
+			done=0;
+
                 }
+		cout<<"BUFFER:"<<buffer2<<endl;
                 tosend.clear();
                 tosend.append("FILE");
-                tosend=tosend+" "+string(buffer);
+                tosend=tosend+" "+string(buffer2);
                 tosend.append("\x89");
 
                 buffer_save.append(buffer);
@@ -557,7 +602,7 @@ void *send_file(void *info){
                 pthread_mutex_unlock(&mutex_dl_send[client]);
                 cout<<"Sending File chunck"<<endl;
                 //sleep(1);
-                index++;
+                index2++;
 
         }
         cout<<"Done Sending file to client:"<<client<<endl;
@@ -566,7 +611,7 @@ void *send_file(void *info){
         dl_send_q[client].push(tosend);
         pthread_mutex_unlock(&mutex_dl_send[client]);
         cout<<"Done sending"<<endl;
-        fclose(Input);
+        Input.close();
 
 
 }
