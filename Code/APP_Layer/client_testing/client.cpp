@@ -35,7 +35,7 @@ int main(int argc, char *argv[]){
 
 	//Ensure correct number of inputs
 	if ((argc < 7) || (argc > 10)) {
-		fprintf(stderr, "usage:\n %s <server> login <username> <age> <location> <hobby>\n", argv[0]);
+		fprintf(stderr, "usage:\n %s <server> login <username> <age> <location> <hobby> <verbose> <port> <probability (0-10)>\n", argv[0]);
 		exit(0);
 	}
 	if (argc >= 8 || argc == 9) vb_mode = atoi(argv[7]);
@@ -45,7 +45,7 @@ int main(int argc, char *argv[]){
 	//If not login
 	if (strcmp(argv[2],"login") != 0) {
 		cout << "Please login!\n";
-		fprintf(stderr, "usage:\n %s <server> login <username> <age> <location> <hobby>\n", argv[0]);
+		fprintf(stderr, "usage:\n %s <server> login <username> <age> <location> <hobby> <verbose> <port> <probability (0-10)>\n", argv[0]);
 		exit(0);
 	}
 
