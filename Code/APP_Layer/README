@@ -28,6 +28,7 @@ Due to CCC server installability the team was force to greatly increase its time
 
 Usage:
 -Server must be started first
+(Port and Verbose are optional, but if you want to set probability , or port in the case of the server, you will need to set them)
 
 ./server <verbose enable> <port>
 
