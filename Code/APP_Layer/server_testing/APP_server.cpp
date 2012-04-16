@@ -199,12 +199,6 @@ void handle_client(int client_ID) {
 		} else
 			verbose("File upload thread started (APP)");
 		//receive_file(client_ID);
-
-		//Send to everyone a new file has been added to server
-		string person = return_username(client_ID);
-		send_to_all(
-				person + " uploaded " + file_up.filename
-						+ ", and it is now available for download!\x89");
 	}
 
 	//Received a piece of a file
@@ -574,6 +568,12 @@ void *receive_file(void *info) {
 			break;
 		}
 	}
+	//Send to everyone a new file has been added to server
+	string person = return_username(client);
+	send_to_all(
+			person + " uploaded " + name
+					+ ", and it is now available for download!\x89");
+
 	verbose("Done receiving (APP)");
 	Output.close();
 }

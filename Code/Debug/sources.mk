@@ -34,7 +34,5 @@ DL_Layer/testing/server \
 DL_Layer/testing \
 DL_Layer/testing/client \
 APP_Layer/server_testing \
-APP_Layer/client_testing/server/server_array \
-APP_Layer/client_testing/server \
 APP_Layer/client_testing \
 

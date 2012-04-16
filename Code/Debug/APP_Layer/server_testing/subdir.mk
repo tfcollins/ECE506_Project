@@ -4,16 +4,22 @@
 
 # Add inputs and outputs from these tool invocations to the build variables 
 CPP_SRCS += \
-../APP_Layer/server_testing/phy_setup.cpp \
-../APP_Layer/server_testing/server.cpp 
+../APP_Layer/server_testing/APP_server.cpp \
+../APP_Layer/server_testing/dl_layer.cpp \
+../APP_Layer/server_testing/phy_q_server_multi.cpp \
+../APP_Layer/server_testing/phy_setup.cpp 
 
 OBJS += \
-./APP_Layer/server_testing/phy_setup.o \
-./APP_Layer/server_testing/server.o 
+./APP_Layer/server_testing/APP_server.o \
+./APP_Layer/server_testing/dl_layer.o \
+./APP_Layer/server_testing/phy_q_server_multi.o \
+./APP_Layer/server_testing/phy_setup.o 
 
 CPP_DEPS += \
-./APP_Layer/server_testing/phy_setup.d \
-./APP_Layer/server_testing/server.d 
+./APP_Layer/server_testing/APP_server.d \
+./APP_Layer/server_testing/dl_layer.d \
+./APP_Layer/server_testing/phy_q_server_multi.d \
+./APP_Layer/server_testing/phy_setup.d 
 
 
 # Each subdirectory must supply rules for building sources it contributes

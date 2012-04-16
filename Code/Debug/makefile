@@ -18,8 +18,6 @@ RM := rm -rf
 -include DL_Layer/testing/client/subdir.mk
 -include DL_Layer/testing/subdir.mk
 -include APP_Layer/server_testing/subdir.mk
--include APP_Layer/client_testing/server/server_array/subdir.mk
--include APP_Layer/client_testing/server/subdir.mk
 -include APP_Layer/client_testing/subdir.mk
 -include subdir.mk
 -include objects.mk
