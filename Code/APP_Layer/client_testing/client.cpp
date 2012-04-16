@@ -463,7 +463,7 @@ void receive_file(string name) {
 
 	name = name.substr(0, name.length() - 1);
 	strcpy(Filename, name.c_str());
-	ofstream Output(Filename, ios::app | ios::out | ios::binary);
+	ofstream Output(Filename, ios::out | ios::binary);
 
 	verbose("File Opened");
 

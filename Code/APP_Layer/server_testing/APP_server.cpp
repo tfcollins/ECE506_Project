@@ -531,7 +531,7 @@ void *receive_file(void *info) {
 	Filename = new char[name.size() + 1];
 	strcpy(Filename, name.c_str());
 
-	ofstream Output(Filename, ios::app | ios::out | ios::binary);
+	ofstream Output(Filename,ios::out | ios::binary);
 
 	verbose("File Opened");
 
