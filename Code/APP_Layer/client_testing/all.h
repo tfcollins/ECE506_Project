@@ -48,6 +48,7 @@ extern int PORT;
 extern int connected;
 extern char *HOSTNAME;
 extern int vb_mode;
+extern int probability;
 
 //Function prototypes
 void diewithError(string message);

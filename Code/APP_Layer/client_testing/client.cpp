@@ -13,6 +13,7 @@ int PORT = 8783;		/* Known port number */
 char* HOSTNAME;
 int vb_mode=0;
 int writing=0;
+int probability=0;
 queue<string> file_recv_q;
 pthread_mutex_t mutex_file_recv = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutex_writing = PTHREAD_MUTEX_INITIALIZER;
@@ -33,12 +34,13 @@ int main(int argc, char *argv[]){
 	struct sockaddr_in serv_addr;
 
 	//Ensure correct number of inputs
-	if ((argc < 7) || (argc > 9)) {
+	if ((argc < 7) || (argc > 10)) {
 		fprintf(stderr, "usage:\n %s <server> login <username> <age> <location> <hobby>\n", argv[0]);
 		exit(0);
 	}
-	if (argc == 8 || argc == 9) vb_mode = 1;
-	if (argc == 9) PORT = atoi(argv[8]);
+	if (argc >= 8 || argc == 9) vb_mode = atoi(argv[7]);
+	if (argc >= 9) PORT = atoi(argv[8]);
+	if (argc == 10) probability = atoi(argv[9]);
 
 	//If not login
 	if (strcmp(argv[2],"login") != 0) {

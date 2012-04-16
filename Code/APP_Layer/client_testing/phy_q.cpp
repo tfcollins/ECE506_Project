@@ -53,7 +53,7 @@ void *phy_layer_t(void* num){
     memset(&outbuff,0,sizeof(outbuff)); // memset used for portability
     thefd=phy_setup(PORT,gethostbyname(HOSTNAME)); // Connect to the finger port
     if(thefd==-1) {
-        printf("Could not connect to finger server\n");
+        printf("Could not connect to server\n");
         exit(0);
     }
     
@@ -62,7 +62,7 @@ void *phy_layer_t(void* num){
     x=fcntl(thefd,F_GETFL,0);
     fcntl(thefd,F_SETFL,x | O_NONBLOCK);
     connected=0; 
-    verbose("Socket_SETUP");;
+    verbose("Socket Setup (PHY)");;
     int crc;
     int total=0;
     string previous="";
@@ -95,7 +95,7 @@ void *phy_layer_t(void* num){
 	   }
 		strcpy(inbuff,previous.c_str());
 	    	previous="";//reset temp buffer
-		//cout<<"FULL MESSAGE: "+string(inbuff)+"|\n";	
+		verbose("FULL MESSAGE: "+string(inbuff)+"| (PHY)");	
 		string temp_str;
 		for (int p=0;p<strlen(inbuff);p++){
 			if (inbuff[p]=='\b'){
@@ -118,7 +118,7 @@ void *phy_layer_t(void* num){
 				else{//Drop Packet
 					verbose("CRC Check FAILLED (PHY)");
 					//verbose("Recv CRC: "+string(crc)+" Calc CRC: "+string(get_crc(string(pch))));
-					verbose("Corrupted Message: "+string(pch)+"|");
+					verbose("Corrupted Message: "+string(pch)+"| (PHY)");
 					pch = strtok(NULL, "\b");
 					continue;
 				}
@@ -152,8 +152,19 @@ void *phy_layer_t(void* num){
 		temp.append("\b");
 
 		strcpy(outbuff,temp.c_str());    
-		
-		//cout<<"Sending '"+string(outbuff)+"' (PHY)"<<endl;
+	
+		//Add error by flipping 1 bit
+                int random=rand() % 10 + 1;
+                if (random<probability){
+                        int selection=rand() %( strlen(outbuff)-2)+2;
+                	//cout<<"Original Message: "<<outbuff<<endl;
+		        outbuff[selection-1]=outbuff[selection-1]++;
+                        verbose("Error introduced (PHY)");
+                }
+		string temp_ob=string(outbuff);
+		temp_ob=temp_ob.substr(0,temp_ob.length()-1);
+		//cout<<"New CRC: "<<get_crc(temp_ob)<<" | Old: "<<crc<<endl;
+		verbose("Sending '"+string(outbuff)+"' (PHY)");
                 write(thefd,outbuff,strlen(outbuff));
                 memset(&outbuff,0,sizeof(outbuff));
                 
@@ -183,11 +194,12 @@ int get_crc(string str){
         for (int i=0;i<str.size();i++){
 
                 mybits=bitset<8>(str[i]);
-                for(int j=0;j<8;j++){
-                        crc= crc[0] ^ mybits[j];
+                //for(int j=0;j<8;j++){
+                 //       crc= crc[0] ^ mybits[j];
                         //cout<<crc<<endl;
 
-                }
+                //}
+		crc= crc ^ mybits;
 
         }
 

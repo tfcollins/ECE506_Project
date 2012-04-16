@@ -136,11 +136,12 @@ void *dl_layer_server(void *client_num){
 					}
 					for(int h=0;h<=count;h++){
 						pthread_mutex_lock(&mutex_window_q[client]);
-						window_q[client].pop();
+						if (!window_q[client].empty())
+							window_q[client].pop();
 						//cout<<"Window Queue Popped"<<endl;
 						//cout<<"New W Q Size: "<<window_q[client].size()<<endl;
 						pthread_mutex_unlock(&mutex_window_q[client]);
-
+						verbose("Queue Reduced in size (DL)");
 						queued--;
 						frame_expected=((frame_expected+1)%4);
 					}
@@ -159,11 +160,11 @@ void *dl_layer_server(void *client_num){
 						//Correctly Ordered Frame
 						//Duplicate	
 						if(buffer.seq_NUM==previous_frame_received[client]){
-						 	verbose("ERROR: Duplicate Message Received (DL)");
+						 	cout<<"ERROR: Duplicate Message Received (DL)"<<endl;
                                                         pthread_mutex_lock(&mutex_phy_receive[client]);
                                                         phy_receive_q[client].pop();
                                                         pthread_mutex_unlock(&mutex_phy_receive[client]);
-							//cout<<"ACK NUMBER: "<<buffer.seq_NUM<<endl;
+							cout<<"ACK NUMBER: "<<buffer.seq_NUM<<endl;
 							send_data(buffer.seq_NUM, 9, "ACK", 1, client);//Send ACK
 							break;
 						} 
@@ -198,7 +199,7 @@ void *dl_layer_server(void *client_num){
 						//cout<<"Sending ACK (DL)"<<endl;
 					}
 					else{//Drop Packet
-						verbose("ERROR: Data Frame out order, dropping (DL)");
+						cout<<"ERROR: Data Frame out order, dropping (DL)"<<endl;
 						pthread_mutex_lock(&mutex_phy_receive[client]);
 						phy_receive_q[client].pop();
 						pthread_mutex_unlock(&mutex_phy_receive[client]);
@@ -238,26 +239,38 @@ void *dl_layer_server(void *client_num){
 
 			//If No ACK received, and timeout
 			case (TIME_OUT):
-				frame_to_send = ack_expected;
+				//frame_to_send = ack_expected;
 				//Reset N Frames
 				if (queued==0){
 					//cout<<"ERROR: Timeout incorrect Queue Size"<<endl;
 					exit(1);
 				}
+				//Determine how many messages need to be sent
+				int start=0;
+                                if (queued==1)
+                                        start=(frame_to_send+3)%4;
+                                else if (queued==2)
+                                        start=(frame_to_send+2)%4;
+                                else if (queued==3)
+                                        start=(frame_to_send+1)%4;
+                                else
+                                        start=frame_to_send;
+				//Send Queued messages
 				for (int i = 0; i < queued; i++){
 					
 					pthread_mutex_lock(&mutex_window_q[client]);
-					//cout<<"Queue Size: "<<window_q[client].size()<<endl;//Get oldest data to send first
-					data = window_q[client].front();//Get oldest data to send first
-					//Cycle Queue, so we push just oldest message to back, it will reach the front once all windowed messages are sent
-					window_q[client].push(window_q[client].front());
-					window_q[client].pop();
+					cout<<"Queue Size: "<<window_q[client].size()<<endl;//Get oldest data to send first	
+					if (!window_q[client].empty()){
+						data = window_q[client].front();//Get oldest data to send first
+						//Cycle Queue, so we push just oldest message to back, it will reach the front once all windowed messages are sent
+						window_q[client].push(window_q[client].front());
+						window_q[client].pop();
+					}
 					pthread_mutex_unlock(&mutex_window_q[client]);
 
 
 					//data = dl_send_q();
-					send_data(frame_to_send, frame_expected, data, 0, client);
-					frame_to_send++;
+					send_data(start+i, frame_expected, data, 0, client);
 					//Reset Timer(s)
 					//verbose("Reseting Timer: "+string(i));;
 					//verbose("Timer: "+string(timers[i])+" Current: "+string(current_time())+" Diff: "+string(current_time()-timers[i]));
@@ -266,11 +279,13 @@ void *dl_layer_server(void *client_num){
 				}
 				break;
 		} //switch(event)
+		//cout<<"Event Completed (DL)"<<endl;//Done with that event
 
+		if (queued > MAX_SEQ) cout << "FUCK (DL)"<<endl;
+		//STOP putting stuff in the queue, or reset queue.
 
-		if (queued > MAX_SEQ) verbose("Queue exceeded!");
 	} //while(1)
-	verbose("EXITTED WHILE(1) LOOP!!!!!!!!!!!!!! CLIENT");
+	cout<<"EXITTED WHILE(1) LOOP!!!!!!!!!!!!!! CLIENT: "<<client<<endl;
 } //main
 
 //SUPPORT FUNCTIONS//////////////////

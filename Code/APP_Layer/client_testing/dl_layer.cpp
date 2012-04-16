@@ -99,7 +99,7 @@ void *dl_layer_client(void *num){
 	}*/
 	
 	//Wait for connected
-	cout<<"Waiting for connection"<<endl;
+	verbose("Waiting for connection (DL)");
 	while(connected)
 		continue;
 
@@ -126,7 +126,7 @@ void *dl_layer_client(void *num){
 						count++;		
 					}
 					if (count>=3){
-						cout<<"Duplicate ACK (DL)"<<endl;
+						verbose("Duplicate ACK (DL)");
 						pthread_mutex_lock(&mutex_phy_receive);
                                         	phy_receive_q.pop();
                                         	pthread_mutex_unlock(&mutex_phy_receive);	
@@ -153,7 +153,7 @@ void *dl_layer_client(void *num){
 					if ((buffer.seq_NUM==(previous_frame_received+1)%4)||(buffer.seq_NUM==previous_frame_received)){
 						//Duplicate
                                                 if(buffer.seq_NUM==previous_frame_received){
-							cout<<"Duplicate Message Received (DL)"<<endl;
+							verbose("Duplicate Message Received (DL)");
                                                 	pthread_mutex_lock(&mutex_phy_receive);
 							phy_receive_q.pop();
                                                 	pthread_mutex_unlock(&mutex_phy_receive);
@@ -183,9 +183,9 @@ void *dl_layer_client(void *num){
 						send_data(buffer.seq_NUM, 9, "ACK", 1);//Send ACK
 					}
 					else{//Drop Packet
-						cout<<"Data Frame out order, dropping (DL)"<<endl;
+						verbose("Data Frame out order, dropping (DL)");
 						pthread_mutex_lock(&mutex_phy_receive);
-						cout<<"(DL) Dropped Frame: "<<phy_receive_q.front()<<endl;
+						//verbose("(DL) Dropped Frame: "+phy_receive_q.front());
 						phy_receive_q.pop();
 						pthread_mutex_unlock(&mutex_phy_receive);
 						break;
@@ -228,6 +228,16 @@ void *dl_layer_client(void *num){
 					verbose("ERROR Timeout incorrect Queue Size (DL)");
 					exit(1);
 				}
+				int start=0;
+				if (queued==1)
+					start=(frame_to_send+3)%4;
+				else if (queued==2)
+					start=(frame_to_send+2)%4;
+				else if (queued==3)
+					start=(frame_to_send+1)%4;
+				else
+					start=frame_to_send;
+				
 				for (int i = 0; i < queued; i++){
 					
 					pthread_mutex_lock(&mutex_window_q);
@@ -239,7 +249,7 @@ void *dl_layer_client(void *num){
 
 
 					//data = dl_send_q();
-					send_data((ack_expected+i)%4, frame_expected, data, 0);
+					send_data((start+i)%4, frame_expected, data, 0);
 
 					//Reset Timer(s)
 					verbose("Reseting Timer");
@@ -309,7 +319,7 @@ int timeouts(void){
 	//Look at times
 	for (int i=0;i<queued;i++)
 		if ((current-timers[i])>TIMEOUT_MAX){
-			cout<<"Timeout occured (DL)"<<endl;
+			verbose("Timeout occured (DL)");
 			return 1;//Timeout occured
 		}
 	return 0;//No timeouts
@@ -400,10 +410,10 @@ int message_cutter(){
 				//Fresh Piece
 				else{
 					//cout<<"END: "<<message[message.length()-1]<<"| \x88 \t"<<endl;
-					if (message[message.length()-1]=='\t')
-						cout<<"C IS BROKEN"<<endl;
-					if (message[message.length()-1]=='\x88')
-						cout<<"C IS BROKEN"<<endl;
+					//if (message[message.length()-1]=='\t')
+					//	cout<<"C IS BROKEN"<<endl;
+					//if (message[message.length()-1]=='\x88')
+					//	cout<<"C IS BROKEN"<<endl;
 
 
 					//cout<<"Message Size: "<<message.size()<<endl;	

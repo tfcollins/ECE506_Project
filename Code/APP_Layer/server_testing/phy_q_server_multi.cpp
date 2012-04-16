@@ -138,7 +138,7 @@ void *phy_layer_t(void* num){
 
     //Wait to send or receive messages
     while(1) {
-	//cout<<"PHY LOOP\r";
+	cout<<"PHY LOOP\r";
 	//Check if DL Layer thread is alive
 	if(pthread_kill(dl_thread[client], 0))
 		verbose("ERROR: DL Thread died for client (PHY)");		
@@ -176,7 +176,7 @@ void *phy_layer_t(void* num){
 		strcpy(inbuff,previous.c_str());
                 previous="";//reset temp buffer
 		//string str=string(inbuff);
-		//cout<<"FULL MESSAGE: "+string(inbuff)+"| (PHY)"<<endl;    
+		cout<<"FULL MESSAGE: "+string(inbuff)+"| (PHY)"<<endl;    
 		//count messages
 		int messages=0;
 		int saved=0;
@@ -198,7 +198,7 @@ void *phy_layer_t(void* num){
 
 				//Check CRC
 				if(get_crc(string(pch))==crc){				
-				//cout<<"Correct CRC"<<endl;
+					cout<<"Correct CRC"<<endl;
 				}	
 				else{//Drop Packet
 					verbose("ERROR: CRC Checksum Failed (PHY)");
@@ -235,7 +235,7 @@ void *phy_layer_t(void* num){
 
 		strcpy(outbuff,temp.c_str());
 
-		//cout<<"Sending (PHY): "<<outbuff<<endl;
+		cout<<"Sending (PHY): "<<outbuff<<endl;
 		pthread_mutex_lock( &mutex_phy_send[client] );
 		phy_send_q[client].pop();
 		pthread_mutex_unlock( &mutex_phy_send[client] );
@@ -260,10 +260,11 @@ int get_crc(string str){
         for (int i=0;i<str.size();i++){
 
                 mybits=bitset<8>(str[i]);
-                for(int j=0;j<8;j++){
-                        crc= crc[0] ^ mybits[j];
+		crc=crc ^ mybits;
+                //for(int j=0;j<8;j++){
+                //        crc= crc[0] ^ mybits[j];
 
-                }
+                //}
         }
         int g=(int) crc[0];
 	return g;
