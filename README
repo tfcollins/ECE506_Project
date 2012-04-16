@@ -1,13 +1,17 @@
 To do:
 
+File DB.
+Error introduction.
+Packet measuring.
+Code cleanup/comments.
+
+Need to write README and describe functionality.
+Clean-up folders.
+
+REMOVE PENIS/FUCK/ANYTHING ELSE from code....
+
 APP Layer:
 
--File transfer
-  -Client side is built, but will need testing once server side is done.
-  -Added logic to place file to upload/get in string 'filename'. Passed to functions
-  -Added send_history function (SERVER). Will make use of file transfer for 'chat_history.txt'
--Commands: history, upload, get
--Message Cutting, NOT WORKING, FUCK!!
 
 DL Layer:
 -Create debug messaging mode
