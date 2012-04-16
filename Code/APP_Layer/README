@@ -5,6 +5,13 @@ Team 4:
 Travis Collins traviscollins@wpi.edu
 James Silvia jsilvia11@wpi.edu
 
+The server is located in /server
+		-use make server
+		-make clean to cleanup
+	client is located in /client
+		-use make client
+		-make clean to cleanup
+
 Possible commands and usage:
 
 To view other chatroom users...
