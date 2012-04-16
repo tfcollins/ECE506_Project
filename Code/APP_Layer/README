@@ -1,0 +1,34 @@
+README
+ECE506
+Course Project: MiniNet
+Team:
+Travis Collins traviscollins@wpi.edu
+James Silvia jsilvia11@wpi.edu
+
+Operational:
+
+Commands:
+-send
+-who
+-what
+-login
+-get
+-upload
+
+Notes:
+All layers are fully independent running in their own threads and purely interact with one another through a series of queues.
+
+The team's server is a able to handle multiple users, though no more than three have been truly tested.
+
+Interms of error introduction, the system generally can work up to 40% probability error introduction.  At 50% it is generally unstable.
+
+The team has successfully transferred files over 1-Megabyte in size to and from the server and clients.	
+
+Due to CCC server installability the team was force to greatly increase its timeout periods.  The severe load on the CCC servers cause massive latency issues.
+
+Usage:
+-Server must be started first
+
+./server <verbose enable> <port>
+
+./client <server> login <username> <age> <location> <hobby> <verbose> <port> <probability (0-10)>

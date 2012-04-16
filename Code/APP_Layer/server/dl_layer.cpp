@@ -78,6 +78,9 @@ void *dl_layer_server(void *client_num){
 	frame buffer;
 	string recv_temp_buff;
 	string data;
+	string input;
+	char *tmp;
+	previous_frame_received[client]=3;
 
 	
 	//Spawn Timers Status Thread, updates when timers change
@@ -88,10 +91,8 @@ void *dl_layer_server(void *client_num){
 		exit(1);
 	}*/
 
-	string input;
-	char *tmp;
-	previous_frame_received[client]=3;
-	//Wait for events to happen
+
+	//Wait for events to happen, then loop again
 	while (1) {
 		int event=wait_for_event(client);
 		switch (event) {
@@ -116,6 +117,7 @@ void *dl_layer_server(void *client_num){
 						start=(start+1)%4;
 						count++;
 					}
+					//Remove ACK(s)
 					for(int h=0;h<=count;h++){
 						pthread_mutex_lock(&mutex_window_q[client]);
 						if (!window_q[client].empty())
@@ -138,22 +140,20 @@ void *dl_layer_server(void *client_num){
 						//Correctly Ordered Frame
 						//Duplicate	
 						if(buffer.seq_NUM==previous_frame_received[client]){
-						 	cout<<"ERROR: Duplicate Message Received (DL)"<<endl;
+						 	verbose("ERROR: Duplicate Message Received (DL)");
                                                         pthread_mutex_lock(&mutex_phy_receive[client]);
                                                         phy_receive_q[client].pop();
                                                         pthread_mutex_unlock(&mutex_phy_receive[client]);
-							cout<<"ACK NUMBER: "<<buffer.seq_NUM<<endl;
 							send_data(buffer.seq_NUM, 9, "ACK", 1, client);//Send ACK
 							break;
 						} 
-
+						//increment frame number
 						previous_frame_received[client]=((previous_frame_received[client]+1)%4);
-						
+						//Remove delimiters
 						pthread_mutex_lock(&mutex_dl_receive[client]);
 						if (buffer.data[strlen(buffer.data)-1]=='\x88'){
                                                         string temp1=string(buffer.data);
                                                         recv_temp_buff.append(temp1.substr(0,temp1.length()-1));
-
                                                 }
                                                 else
 							recv_temp_buff.append(buffer.data);
@@ -166,7 +166,7 @@ void *dl_layer_server(void *client_num){
                                                                 recv_temp_buff.clear();
                                                                 }
 						pthread_mutex_unlock(&mutex_dl_receive[client]);
-	
+						//remove from queue	
 						pthread_mutex_lock(&mutex_phy_receive[client]);
 						phy_receive_q[client].pop();
 						pthread_mutex_unlock(&mutex_phy_receive[client]);
@@ -214,7 +214,7 @@ void *dl_layer_server(void *client_num){
 				//frame_to_send = ack_expected;
 				//Reset N Frames
 				if (queued==0){
-					//cout<<"ERROR: Timeout incorrect Queue Size"<<endl;
+					cout<<"ERROR: Timeout incorrect Queue Size"<<endl;
 					exit(1);
 				}
 				//Determine how many messages need to be sent
@@ -231,7 +231,7 @@ void *dl_layer_server(void *client_num){
 				for (int i = 0; i < queued; i++){
 					
 					pthread_mutex_lock(&mutex_window_q[client]);
-					cout<<"Queue Size: "<<window_q[client].size()<<endl;//Get oldest data to send first	
+					//Get oldest data to send first	
 					if (!window_q[client].empty()){
 						data = window_q[client].front();//Get oldest data to send first
 						//Cycle Queue, so we push just oldest message to back, it will reach the front once all windowed messages are sent
@@ -241,7 +241,6 @@ void *dl_layer_server(void *client_num){
 					pthread_mutex_unlock(&mutex_window_q[client]);
 
 
-					//data = dl_send_q();
 					send_data(start+i, frame_expected, data, 0, client);
 					//Reset Timer(s)
 					timers[i]=current_time();
@@ -255,7 +254,7 @@ void *dl_layer_server(void *client_num){
 		//STOP putting stuff in the queue, or reset queue.
 
 	} //while(1)
-	cout<<"EXITTED WHILE(1) LOOP!!!!!!!!!!!!!! CLIENT: "<<client<<endl;
+	cout<<"EXITTED WHILE(1) LOOP, Something went really really wrong on client: "<<client<<endl;
 } //main
 
 //SUPPORT FUNCTIONS//////////////////
@@ -268,7 +267,7 @@ int wait_for_event(int client){
 	int client_temp;
 	while(event<1){
 	    client_temp=client;
-	    //sleep(1);
+	    //sleep(1);//debugging
 	    pthread_mutex_lock( &mutex_phy_receive[client] );	
 	    if (!phy_receive_q[client].empty()){
 		event=1;
@@ -397,10 +396,9 @@ frame deconstruct_frame(char *input){
 }
 
 //TFC
-//Message Cutter
+//Message Cutter, for messages > 128
 int message_cutter(int client){
 
-        //pthread_mutex_lock(&mutex_dl_send[client]);
         int E=dl_send_q[client].size();
         string message;
         string piece;
@@ -431,7 +429,7 @@ int message_cutter(int client){
                         }
                         else{
                                 string str=message.substr(0,BUFFER_SIZE-1);
-                                //cout<<"First Piece: "<<str<<"|"<<endl;
+                                //First Piece
                                 dl_send_q[client].push(str.append("\x88"));//Mid message marker
 
                         }

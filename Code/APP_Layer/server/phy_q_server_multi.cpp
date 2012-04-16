@@ -260,10 +260,6 @@ int get_crc(string str){
 
                 mybits=bitset<8>(str[i]);
 		crc=crc ^ mybits;
-                //for(int j=0;j<8;j++){
-                //        crc= crc[0] ^ mybits[j];
-
-                //}
         }
         int g=(int) crc[0];
 	return g;
