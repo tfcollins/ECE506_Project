@@ -138,7 +138,7 @@ void *phy_layer_t(void* num){
 
     //Wait to send or receive messages
     while(1) {
-	cout<<"PHY LOOP\r";
+	//cout<<"PHY LOOP\r";
 	//Check if DL Layer thread is alive
 	if(pthread_kill(dl_thread[client], 0))
 		verbose("ERROR: DL Thread died for client (PHY)");		

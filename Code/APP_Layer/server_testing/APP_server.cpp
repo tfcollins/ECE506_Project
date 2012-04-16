@@ -8,8 +8,8 @@
 #define DELIM " "
 #define MAX_BUFF 255
 
-int PORT = 8785;		/* Known port number */
-int vb_mode = 1;
+int PORT = 8783;		/* Known port number */
+int vb_mode = 0;
 int writing=0;
 queue<string> file_recv_q;
 pthread_mutex_t mutex_file_recv = PTHREAD_MUTEX_INITIALIZER;
@@ -31,6 +31,8 @@ struct user_entry{
 //Database of User Entries
 static list<user_entry> database;
 
+//Database for available files
+static list <string> file_db;
 
 //Function Prototypes
 void handle_client(int ID);
@@ -50,6 +52,7 @@ void send_history(const int client_ID, string buff);
 string convertInt(int number);
 void *receive_file(void* info);
 void *send_file(void* info);
+bool check_filedb(string file);
 
 using namespace std;
 
@@ -59,7 +62,7 @@ int main(int argc, char *argv[]){
 		fprintf(stderr, "usage:\n %s\n", argv[0]);
 		exit(0);
 	}
-	if (argc == 2) vb_mode = atoi(argv[1]);
+	if (argc == 2 || argc ==3) vb_mode = atoi(argv[1]);
 	if (argc == 3) PORT = atoi(argv[2]);
 	
 	//Initialize Physical Layer
@@ -71,6 +74,8 @@ int main(int argc, char *argv[]){
             exit(1);
     }
 
+    //Always should be in the file db
+    file_db.push_front("chat_history.txt");
     while(1){
     	//Monitor queues for connected clients, Handle Client when queue not empty
     	for(int ID = 0; ID < clients; ID++){
@@ -91,10 +96,8 @@ void handle_client(int client_ID){
 
 	string command;
 	string buff = get_string(client_ID);
-	//cout<<"(APP) BUFF: "<<buff<<endl;
 	istringstream iss(buff);
 	iss >> command;
-	//cout<<"\n\nCOMMAND: "<<command<<endl;
 	if (strcmp(command.c_str(), "login") == 0){
 
 		string user,age,loc,hobby;
@@ -161,17 +164,18 @@ void handle_client(int client_ID){
 
 	//Client wants to upload a file
 	else if (strcmp(command.c_str(),"upload") == 0){
-		//cout<<"Client wants to upload file (APP)"<<endl;
 		pthread_mutex_lock(&mutex_writing);;
 		writing=1;
 		pthread_mutex_unlock(&mutex_writing);;
 		//Start file writing thread
-    		pthread_t file_thread;
-	    	upload_info file_up;
-                iss>>file_up.filename;
-		cout<<"Filename: "<<file_up.filename<<endl;
-                file_up.client=client_ID;
-                file_up.size=sizeof(file_up)+1;
+		pthread_t file_thread;
+	    upload_info file_up;
+        iss>>file_up.filename;
+        //cout<<"Filename: "<<file_up.filename<<endl;
+        file_up.client=client_ID;
+        file_up.size=sizeof(file_up)+1;
+        //Server DB of available files
+        file_db.push_front(file_up.filename);
 
 		int rc2;
     		rc2 = pthread_create(&file_thread, NULL, receive_file, &file_up);
@@ -179,9 +183,12 @@ void handle_client(int client_ID){
             		cout<<"File Upload Thread Failed to be created"<<endl;
             		exit(1);
     		}
-		else
-			cout<<"Thread Started"<<endl;
+    		else
+    			verbose("File upload thread started (APP)");
 		//receive_file(client_ID);
+
+    	string person = return_username(client_ID);
+    	send_to_all(person + " uploaded " + file_up.filename + ", and it is now available for download!\x89");
 	}
 
 	//Received a piece of a file
@@ -201,15 +208,15 @@ void handle_client(int client_ID){
 	}
 	//Done with file xfer
 	else if (command.find("FILD") < 256){
-		cout<<"Client is done uploading file (APP)"<<endl;
+		verbose("Client is done uploading file (APP)");
 		pthread_mutex_lock(&mutex_writing);;
 		writing=0;
-		pthread_mutex_unlock(&mutex_writing);;
+		pthread_mutex_unlock(&mutex_writing);
 		//receive_file(client_ID);
 	}
 
 	else if (strcmp(command.c_str(),"get")==0){
-		cout<<"Client want to download a file"<<endl;
+		verbose("Client wants to download a file");
 		//Construct Filename
 		string message = "";
 		string temp;
@@ -227,19 +234,22 @@ void handle_client(int client_ID){
 		//cout<<file_up.filename<<endl;
 		//cout<<file_up.client<<endl;
 
+		if (!check_filedb(file_up.filename)) send_to_one(client_ID, "FILB\x89");
+		else{
 		//Create thread
+			//send_to_one(client_ID,"Exists\x89");
                 rc3 = pthread_create(&get_thread, NULL, send_file, &file_up);
                 if (rc3){
                         cout<<"File Upload Thread Failed to be created"<<endl;
                         exit(1);
                 }
                 else
-                        cout<<"Thread Started"<<endl;
-
+                	verbose("File upload thread started (APP)");
+		}
 	}
 
 	//Successfully handled Client
-	cout<<"Handled Client (APP)"<<endl;
+	verbose("Handled Client (APP)");
 	return;
 }
 
@@ -291,7 +301,7 @@ bool add_entry(const int client_ID, const string &username, const int age, const
 bool name_check(const string name, const int client_ID){
 	for (list<user_entry>::iterator entry = database.begin(); entry != database.end(); entry++){
 		if ((strcmp(entry->username.c_str(), name.c_str())) == 0){
-			string tosend = "ERROR! Username already exists.x89";
+			string tosend = "ERROR! Username already exists.\x89";
 			send_to_one(client_ID, tosend);
 			return false;
 		}
@@ -425,15 +435,15 @@ void add_to_history(string message){
 //History file transfer
 void send_history(const int client_ID, string buff){
 
-	cout<<"Client want to download a file"<<endl;
+	verbose("Client wants the chat history");
 	//Construct Filename
 	//Spawn thread to upload file to client
 	pthread_t get_thread;
 	int rc3;
+
 	//Thread info to be passed
 	upload_info file_up2;
 	file_up2.filename=buff.substr(9,buff.length()-10);
-	cout<<"Filename: " <<file_up2.filename<<endl; 
 	file_up2.client=client_ID;
 	file_up2.size=sizeof(file_up2)+1;
  	//Create thread
@@ -443,7 +453,7 @@ void send_history(const int client_ID, string buff){
               exit(1);
         }
         else
-              cout<<"Thread Started"<<endl;
+              verbose("History thread started (APP)");
 
 }
 
@@ -454,6 +464,14 @@ string convertInt(int number){
 	return ss.str();
 }
 
+bool check_filedb(string file){
+	for (list<string>::const_iterator entry = file_db.begin(); entry != file_db.end(); entry++){
+		if (file.compare(*entry) == 0){
+			return true;
+		}
+	}
+	return false;
+}
 
 //Receive File from user
 void *receive_file(void *info){
@@ -466,19 +484,16 @@ void *receive_file(void *info){
         char * name_char=new char [size+1];
         strcpy(name_char,(*((upload_info*)(info))).filename.c_str());
         string name = name_char;
-	cout<<"Name: "<<name<<endl;
-	//cout<<"Name2: "<<(*((upload_info*)(info))).filename<<endl;
-	string temp;
+        string temp;
 
         //Filename
         char * Filename;
         Filename = new char [name.size()+1];
         strcpy(Filename,name.c_str());
-        cout<<"\n\nFILENAME: "<<Filename<<endl;
 
         ofstream Output (Filename,ios::app | ios::out | ios::binary);
 
-        verbose("Filed Opened");
+        verbose("File Opened");
 
         while(1){
                 pthread_mutex_lock(&mutex_file_recv);
@@ -514,7 +529,7 @@ void *receive_file(void *info){
                         break;
                 }
         }
-        cout<<"Done receiving"<<endl;
+        verbose("Done receiving (APP)");
         Output.close();
 }
 
@@ -532,10 +547,9 @@ void *send_file(void *info){
 	string name = name_char;
 
 	//Filename
-        char * Filename;
-        Filename = new char [name.size()+1];
-        strcpy(Filename,name.c_str());
-	cout<<"\n\nFILENAME: "<<Filename<<endl;
+    char * Filename;
+    Filename = new char [name.size()+1];
+    strcpy(Filename,name.c_str());
 	
 	ifstream Input;
 	size_t Size=0;
@@ -552,9 +566,9 @@ void *send_file(void *info){
 
 
         int pieces=(int)floor((double)Size/((double)chunk));
-        cout<<"Pieces to send: "<<pieces<<endl;
+        //cout<<"Pieces to send: "<<pieces<<endl;
         int remainder=Size%chunk;
-        cout<<"Remainder; "<<remainder<<endl;
+        //cout<<"Remainder; "<<remainder<<endl;
         int index=0;
         int index2=0;
         int bytes=0;
@@ -589,7 +603,7 @@ void *send_file(void *info){
 			done=0;
 
                 }
-		cout<<"BUFFER:"<<buffer2<<endl;
+                //cout<<"BUFFER:"<<buffer2<<endl;
                 tosend.clear();
                 tosend.append("FILE");
                 tosend=tosend+" "+string(buffer2);
@@ -600,20 +614,18 @@ void *send_file(void *info){
                 pthread_mutex_lock(&mutex_dl_send[client]);
                 dl_send_q[client].push(tosend);
                 pthread_mutex_unlock(&mutex_dl_send[client]);
-                cout<<"Sending File chunck"<<endl;
+                //cout<<"Sending File chunck"<<endl;
                 //sleep(1);
                 index2++;
 
         }
-        cout<<"Done Sending file to client:"<<client<<endl;
+
         tosend="FILD\x89";
         pthread_mutex_lock(&mutex_dl_send[client]);
         dl_send_q[client].push(tosend);
         pthread_mutex_unlock(&mutex_dl_send[client]);
-        cout<<"Done sending"<<endl;
+        verbose("Done sending (APP)");
         Input.close();
-
-
 }
 
 

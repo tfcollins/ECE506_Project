@@ -9,9 +9,9 @@
 #define MAX_BUFF 255
 #define chunk 100
 
-int PORT = 8785;		/* Known port number */
+int PORT = 8783;		/* Known port number */
 char* HOSTNAME;
-int vb_mode=1;
+int vb_mode=0;
 int writing=0;
 queue<string> file_recv_q;
 pthread_mutex_t mutex_file_recv = PTHREAD_MUTEX_INITIALIZER;
@@ -37,7 +37,7 @@ int main(int argc, char *argv[]){
 		fprintf(stderr, "usage:\n %s <server> login <username> <age> <location> <hobby>\n", argv[0]);
 		exit(0);
 	}
-	if (argc == 8) vb_mode = 1;//atoi(argv[7]);
+	if (argc == 8 || argc == 9) vb_mode = 1;
 	if (argc == 9) PORT = atoi(argv[8]);
 
 	//If not login
@@ -157,7 +157,6 @@ int main(int argc, char *argv[]){
 				tosend = command + " " + message;
 			}
 			else if ((command.compare("upload") == 0) && (word == 2)){
-				lessthan = true;
 				filename = message;
 				tosend = command + " " + message;
 				send_dl(tosend+"\x89");
@@ -327,6 +326,10 @@ void *recv_display(void *num){
 			}
 			else if(recvd.substr(0,4)=="FILD")
 				writing=0;
+			else if (strcmp(recvd.c_str(),"FILB") == 0){
+				cout << "That file does not exist, try again!" << endl;
+				writing = 0;
+			}
 			//Display the received message from server to user
 			else{
 				cout << "\nMessage received from server!" << endl;
@@ -348,10 +351,9 @@ void send_file(string filename){
 
         //Set User
         char * Filename;
-	filename=filename.substr(0,filename.length()-1);
+        filename=filename.substr(0,filename.length()-1);
         Filename = new char [filename.size()+1];
         strcpy(Filename,filename.c_str());
-        cout<<"\n\nFILENAME: "<<Filename<<"|"<<endl;
 
         ifstream Input;
         size_t Size=0;
@@ -368,9 +370,7 @@ void send_file(string filename){
 
 
         int pieces=(int)floor((double)Size/((double)chunk));
-        cout<<"Pieces to send: "<<pieces<<endl;
         int remainder=Size%chunk;
-        cout<<"Remainder; "<<remainder<<endl;
         int index=0;
         int index2=0;
         int bytes=0;
@@ -379,7 +379,7 @@ void send_file(string filename){
         string tosend;
         string buffer2;
 
-	sleep(1);
+        sleep(1);
         /* Algorithm                               */
         string buffer_save="";
         while (done) {
@@ -407,7 +407,7 @@ void send_file(string filename){
                         done=0;
 
                 }
-                cout<<"BUFFER:"<<buffer2<<endl;
+                //cout<<"BUFFER:"<<buffer2<<endl;
                 tosend.clear();
                 tosend.append("FILE");
                 tosend=tosend+" "+string(buffer2);
@@ -418,7 +418,6 @@ void send_file(string filename){
                 pthread_mutex_lock(&mutex_dl_send);
                 dl_send_q.push(tosend);
                 pthread_mutex_unlock(&mutex_dl_send);
-                cout<<"Sending File chunck"<<endl;
                 //sleep(1);
                 index2++;
 
@@ -427,7 +426,7 @@ void send_file(string filename){
         pthread_mutex_lock(&mutex_dl_send);
         dl_send_q.push(tosend);
         pthread_mutex_unlock(&mutex_dl_send);
-        cout<<"Done sending"<<endl;
+        cout<<"Upload complete"<<endl;
         Input.close();
 
 
@@ -438,51 +437,53 @@ void send_file(string filename){
 //Use this in recv_thread
 void receive_file(string name){
 
-	char C;
-	char Filename[MAX_BUFF];
-	string temp;
+	int wait = 1;
+
+		char C;
+		char Filename[MAX_BUFF];
+		string temp;
+
+		name=name.substr(0,name.length()-1);
+		strcpy(Filename,name.c_str());
+		ofstream Output (Filename,ios::app | ios::out | ios::binary);
+
+		verbose("File Opened");
 	
-	name=name.substr(0,name.length()-1);
-	strcpy(Filename,name.c_str());
-	ofstream Output (Filename,ios::app | ios::out | ios::binary);
+		while(1){
+			pthread_mutex_lock(&mutex_file_recv);
+			if (!file_recv_q.empty()){
+				temp.clear();
+                temp=file_recv_q.front();
+                temp=temp.substr(0,temp.length());
+                //cout<<"Writing: "<<temp<<"|"<<endl;
 
-	verbose("Filed Opened");
-	
-	while(1){
-		pthread_mutex_lock(&mutex_file_recv);
-		if (!file_recv_q.empty()){
-			temp.clear();
-                	temp=file_recv_q.front();
-                	temp=temp.substr(0,temp.length());
-                	//cout<<"Writing: "<<temp<<"|"<<endl;
+                file_recv_q.pop();
 
-                	file_recv_q.pop();
+                char * buffer;
+                buffer = new char [temp.size()+1];
+               	//buffer = (char*) malloc (sizeof(char)*temp.length());
+                strcpy(buffer,temp.c_str());
+                //fwrite(buffer,1,temp.length(),Output);
+                Output << buffer;
+			}
+			pthread_mutex_unlock(&mutex_file_recv);
 
-                	char * buffer;
-                	buffer = new char [temp.size()+1];
-               		//buffer = (char*) malloc (sizeof(char)*temp.length());
-                	strcpy(buffer,temp.c_str());
-                	//fwrite(buffer,1,temp.length(),Output);
-			Output << buffer;
-		}	
-		pthread_mutex_unlock(&mutex_file_recv);
-
-		pthread_mutex_lock(&mutex_file_recv);
-		pthread_mutex_lock(&mutex_writing);
+			pthread_mutex_lock(&mutex_file_recv);
+			pthread_mutex_lock(&mutex_writing);
 
 		// Algorithm
-  		if(writing || !file_recv_q.empty()){
-			pthread_mutex_unlock(&mutex_writing);
-			pthread_mutex_unlock(&mutex_file_recv);
-			continue;
+  			if(writing || !file_recv_q.empty()){
+				pthread_mutex_unlock(&mutex_writing);
+				pthread_mutex_unlock(&mutex_file_recv);
+				continue;
+			}
+			else{
+				pthread_mutex_unlock(&mutex_writing);
+                pthread_mutex_unlock(&mutex_file_recv);
+                break;
+			}
 		}
-		else{
-			pthread_mutex_unlock(&mutex_writing);
-                	pthread_mutex_unlock(&mutex_file_recv);
-			break;
-		}
-	}
-	cout<<"Done receiving"<<endl;
-	Output.close();
+		cout<<"Done receiving"<<endl;
+		Output.close();
 }
 

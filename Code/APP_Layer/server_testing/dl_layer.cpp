@@ -159,11 +159,11 @@ void *dl_layer_server(void *client_num){
 						//Correctly Ordered Frame
 						//Duplicate	
 						if(buffer.seq_NUM==previous_frame_received[client]){
-						 	cout<<"ERROR: Duplicate Message Received (DL)"<<endl;
+						 	verbose("ERROR: Duplicate Message Received (DL)");
                                                         pthread_mutex_lock(&mutex_phy_receive[client]);
                                                         phy_receive_q[client].pop();
                                                         pthread_mutex_unlock(&mutex_phy_receive[client]);
-							cout<<"ACK NUMBER: "<<buffer.seq_NUM<<endl;
+							//cout<<"ACK NUMBER: "<<buffer.seq_NUM<<endl;
 							send_data(buffer.seq_NUM, 9, "ACK", 1, client);//Send ACK
 							break;
 						} 
@@ -198,7 +198,7 @@ void *dl_layer_server(void *client_num){
 						//cout<<"Sending ACK (DL)"<<endl;
 					}
 					else{//Drop Packet
-						cout<<"ERROR: Data Frame out order, dropping (DL)"<<endl;
+						verbose("ERROR: Data Frame out order, dropping (DL)");
 						pthread_mutex_lock(&mutex_phy_receive[client]);
 						phy_receive_q[client].pop();
 						pthread_mutex_unlock(&mutex_phy_receive[client]);
@@ -247,7 +247,7 @@ void *dl_layer_server(void *client_num){
 				for (int i = 0; i < queued; i++){
 					
 					pthread_mutex_lock(&mutex_window_q[client]);
-					cout<<"Queue Size: "<<window_q[client].size()<<endl;//Get oldest data to send first	
+					//cout<<"Queue Size: "<<window_q[client].size()<<endl;//Get oldest data to send first
 					data = window_q[client].front();//Get oldest data to send first
 					//Cycle Queue, so we push just oldest message to back, it will reach the front once all windowed messages are sent
 					window_q[client].push(window_q[client].front());
@@ -266,13 +266,11 @@ void *dl_layer_server(void *client_num){
 				}
 				break;
 		} //switch(event)
-		//cout<<"Event Completed (DL)"<<endl;//Done with that event
 
-		if (queued > MAX_SEQ) cout << "FUCK (DL)"<<endl;
-		//STOP putting stuff in the queue, or reset queue.
 
+		if (queued > MAX_SEQ) verbose("Queue exceeded!");
 	} //while(1)
-	cout<<"EXITTED WHILE(1) LOOP!!!!!!!!!!!!!! CLIENT: "<<client<<endl;
+	verbose("EXITTED WHILE(1) LOOP!!!!!!!!!!!!!! CLIENT");
 } //main
 
 //SUPPORT FUNCTIONS//////////////////
