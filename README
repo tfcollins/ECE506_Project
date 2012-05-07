@@ -1,25 +1,59 @@
-To do:
+README
+ECE506
+Course Project: MiniNet
+Team 4:
+Travis Collins traviscollins@wpi.edu
+James Silvia jsilvia11@wpi.edu
 
-File DB.
-Error introduction.
-Packet measuring.
-Code cleanup/comments.
+The server is located in /server
+  	-use make server
+		-make clean to cleanup
+	client is located in /client
+		-use make client
+		-make clean to cleanup
 
-Need to write README and describe functionality.
-Clean-up folders.
+Possible commands and usage:
 
-REMOVE PENIS/FUCK/ANYTHING ELSE from code....
+To view other chatroom users...
+	who
+To send chat messages...
+	send <message>
+To receive chat history...
+	history
+To see online user's details...
+	what <username>
+To upload a file...
+	upload <image.jpg>
+To download hosted files...
+	get <image.jpg>
+To logout of the chatroom...
+	logout
 
-APP Layer:
+The client accepts "help" and prints out user usage, will also
+print on incorrect input to the client.
 
+Notes:
+All layers are fully independent running in their own threads and 
+purely interact with one another through a series of queues.
 
-DL Layer:
--Create debug messaging mode
--Test more multi-client stuff
--Clean up comments/code
+The team's server is able to handle multiple users, though no more 
+than three have been truly tested.
 
-PHY Layer:
--Create debug messaging mode
--Clean up comments/code
+In terms of error introduction, the system generally can work up to 40% 
+probability error introduction.  At 50% it is generally unstable.
 
-PACKET LOSS
+The team has successfully transferred files over 1-Megabyte in size to 
+and from the server and clients.	
+
+Due to CCC server instability the team was force to greatly increase its 
+timeout periods.  The severe load on the CCC servers cause massive latency issues.
+
+Usage:
+-Server must be started first
+
+./server <verbose enable> <port>
+-verbose enable and port are optional inputs
+
+./client <server> login <username> <age> <location> <hobby> <verbose> <port> <probability (0-10)>
+-verbose, port, and probability are optional inputs
+-probability (0-10) is configured such that 1->10% error.
